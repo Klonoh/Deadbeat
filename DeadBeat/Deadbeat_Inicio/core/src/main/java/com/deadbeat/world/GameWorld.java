@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Disposable;
 import com.deadbeat.entities.Player;
+import com.deadbeat.graphics.PlayerSpriteRenderer;
 
 /** Holds simulation state and draws the prototype arena and player. */
 public final class GameWorld implements Disposable {
@@ -19,6 +20,7 @@ public final class GameWorld implements Disposable {
     private final float height;
     private final Texture pixel;
     private final Player player;
+    private final PlayerSpriteRenderer playerSpriteRenderer;
     private float elapsedTime;
 
     public GameWorld(float width, float height) {
@@ -36,6 +38,7 @@ public final class GameWorld implements Disposable {
         pixmap.fill();
         pixel = new Texture(pixmap);
         pixmap.dispose();
+        playerSpriteRenderer = new PlayerSpriteRenderer();
     }
 
     public void update(float delta) {
@@ -71,42 +74,12 @@ public final class GameWorld implements Disposable {
         batch.setColor(1f, 1f, 1f, 1f);
     }
 
-    /** Prototype punk musician made of pixel rectangles. No asset files required. */
+    /** Draws an unobtrusive shadow and the current directional animation frame. */
     private void drawPlayer(SpriteBatch batch) {
-        float x = player.getX();
-        float y = player.getY();
-
-        // Shadow under the feet; the collision circle uses radius 14 from Player.
-        rect(batch, x - 12f, y - 14f, 24f, 3f, 0.045f, 0.045f, 0.06f);
-
-        // Flash while damage immunity lasts. Only the player sprite flickers.
-        if (player.isInvulnerable()
-                && ((int) (player.getInvulnerabilityRemaining() * 14f) % 2 == 0)) {
-            return;
-        }
-
-        // Boots and trousers.
-        rect(batch, x - 10f, y - 12f, 8f, 6f, 0.05f, 0.06f, 0.08f);
-        rect(batch, x + 2f, y - 12f, 8f, 6f, 0.05f, 0.06f, 0.08f);
-        rect(batch, x - 9f, y - 7f, 18f, 6f, 0.25f, 0.25f, 0.32f);
-
-        // Arms and studded leather jacket.
-        rect(batch, x - 13f, y - 3f, 5f, 8f, 0.67f, 0.18f, 0.33f);
-        rect(batch, x + 8f, y - 3f, 5f, 8f, 0.67f, 0.18f, 0.33f);
-        rect(batch, x - 10f, y - 4f, 20f, 12f, 0.12f, 0.13f, 0.20f);
-        rect(batch, x - 2f, y - 4f, 4f, 12f, 0.72f, 0.18f, 0.34f);
-        rect(batch, x - 8f, y + 4f, 3f, 3f, 0.82f, 0.82f, 0.80f);
-        rect(batch, x + 5f, y + 4f, 3f, 3f, 0.82f, 0.82f, 0.80f);
-
-        // Face, eyes and bright pink mohawk. Character faces the latest direction.
-        rect(batch, x - 7f, y + 6f, 14f, 7f, 0.96f, 0.72f, 0.54f);
-        float eyeOffset = player.getFacingX() < -0.25f ? -2f
-                : (player.getFacingX() > 0.25f ? 2f : 0f);
-        rect(batch, x - 4f + eyeOffset, y + 8f, 2f, 2f, 0.06f, 0.06f, 0.09f);
-        rect(batch, x + 2f + eyeOffset, y + 8f, 2f, 2f, 0.06f, 0.06f, 0.09f);
-        rect(batch, x - 6f, y + 12f, 12f, 2f, 0.96f, 0.19f, 0.60f);
-        rect(batch, x - 4f, y + 13f, 3f, 1f, 1f, 0.30f, 0.74f);
-        rect(batch, x + 1f, y + 13f, 3f, 1f, 1f, 0.30f, 0.74f);
+        // Player x/y denotes the gameplay hitbox center, approximately between the feet.
+        rect(batch, player.getX() - 14f, player.getY() - 14f,
+                28f, 4f, 0.045f, 0.045f, 0.06f);
+        playerSpriteRenderer.draw(batch, player);
     }
 
     private void rect(SpriteBatch batch, float x, float y, float w, float h,
@@ -125,6 +98,7 @@ public final class GameWorld implements Disposable {
 
     @Override
     public void dispose() {
+        playerSpriteRenderer.dispose();
         pixel.dispose();
     }
 }

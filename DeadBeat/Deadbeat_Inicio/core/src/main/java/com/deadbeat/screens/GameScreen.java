@@ -56,7 +56,7 @@ public final class GameScreen extends ScreenAdapter {
         Player player = world.getPlayer();
         batch.begin();
         world.draw(batch);
-        font.draw(batch, "DEADBEAT  |  PROTOTIPO 0.2 - PLAYER", 20f, WORLD_HEIGHT - 20f);
+        font.draw(batch, "DEADBEAT  |  PROTOTIPO 0.3 - SPRITES", 20f, WORLD_HEIGHT - 20f);
         font.draw(batch, "WASD / flechas: mover    H: dano de prueba    R: reiniciar    ESC: salir",
                 20f, WORLD_HEIGHT - 43f);
         font.draw(batch, "VIDA: " + (int) player.getHealth() + " / "

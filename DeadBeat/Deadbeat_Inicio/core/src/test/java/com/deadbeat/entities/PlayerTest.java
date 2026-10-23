@@ -12,6 +12,37 @@ public class PlayerTest {
         return new Player(100f, 100f, new Rectangle(0f, 0f, 200f, 200f));
     }
 
+
+    @Test public void walkingStateBeginsAndStopsWithInput() {
+        Player p = createPlayer();
+        assertFalse(p.isMoving());
+        assertEquals(0f, p.getWalkTime(), EPS);
+        p.update(0.12f, 1f, 0f);
+        assertTrue(p.isMoving());
+        assertEquals(0.12f, p.getWalkTime(), EPS);
+        p.update(0.10f, 0f, 0f);
+        assertFalse(p.isMoving());
+        assertEquals(0f, p.getWalkTime(), EPS);
+    }
+
+    @Test public void facingPersistsAfterStopping() {
+        Player p = createPlayer();
+        p.update(0.10f, -1f, 1f);
+        p.update(0.10f, 0f, 0f);
+        assertTrue(p.getFacingX() < 0f);
+        assertTrue(p.getFacingY() > 0f);
+        assertFalse(p.isMoving());
+    }
+
+    @Test public void resetRestoresDefaultFacingAndIdleState() {
+        Player p = createPlayer();
+        p.update(0.10f, 1f, 1f);
+        p.reset();
+        assertEquals(0f, p.getFacingX(), EPS);
+        assertEquals(-1f, p.getFacingY(), EPS);
+        assertFalse(p.isMoving());
+    }
+
     @Test public void startsAliveAtSpecifiedPosition() {
         Player p = createPlayer();
         assertEquals(100f, p.getX(), EPS);

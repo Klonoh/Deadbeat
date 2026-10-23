@@ -12,7 +12,7 @@ public final class Lwjgl3Launcher {
 
     public static void main(String[] args) {
         Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
-        config.setTitle("DEADBEAT - Prototipo 0.2 - Player");
+        config.setTitle("DEADBEAT - Prototipo 0.3 - Sprites");
         config.setWindowedMode(960, 540);
         config.useVsync(true);
         config.setForegroundFPS(60);

@@ -1,4 +1,4 @@
-# DEADBEAT - Prototipo 0.2 (Player)
+# DEADBEAT - Prototipo 0.3 (Player + sprites 8 direcciones)
 
 Survivors-like de zombis, estetica punk y armas-instrumento. Este ZIP es la **primera entrega jugable del movimiento del jugador**. Se basa en la estructura 0.1 (`DeadbeatGame`, `GameScreen`, `GameWorld`) y anade `Player` y `Damageable`.
 
@@ -32,7 +32,7 @@ En Eclipse/NetBeans, importa como **proyecto Gradle** y ejecuta `lwjgl3 > run`. 
 
 `H` y `R` son controles de depuracion **temporales** y no son parte del gameplay definitivo.
 
-El personaje esta representado provisionalmente por una figura punk construida a partir de rectangulos de colores. No necesitamos assets externos para esta version.
+El personaje utiliza la hoja `assets/sprites/player_walk.png` con transparencia, 8 direcciones y 3 poses por direccion. El PNG original esta incluido en `assets/sprites/player_original.png`.
 
 ## Comportamiento implementado
 
@@ -43,12 +43,12 @@ El personaje esta representado provisionalmente por una figura punk construida a
 - Vida 100/100; `Damageable.takeDamage()`; muerte a HP 0 y bloqueo del movimiento.
 - Invulnerabilidad de 0.65 segundos al recibir dano; indicador y parpadeo visual.
 - `Player.update(delta, horizontal, vertical)` permite probar logica sin ventana.
-- Una unica textura 1x1 en `GameWorld`, reutilizada para arena y jugador.
-- Manejo centralizado de recursos (`dispose`) para `Texture`, `SpriteBatch` y `BitmapFont`.
+- Una textura 1x1 reutilizada para dibujar la arena y una textura de sprites cargada una sola vez para el personaje.
+- Manejo centralizado de recursos (`dispose`) para `Texture`, `SpriteBatch`, `BitmapFont` y sprites del personaje.
 
 ## Prueba manual propuesta
 
-1. Abre el juego: se ve la arena y un pequeno punk en el centro.
+1. Abre el juego: se ve la arena y el sprite punk animado en el centro.
 2. Mueve con WASD o flechas; prueba diagonales y soltar todas las teclas.
 3. Ve a los cuatro bordes y observa que el personaje no puede salir.
 4. Pulsa **H** una vez: 100 -> 80 y aparece `INVULNERABLE`.
@@ -94,3 +94,10 @@ Se usa `getX()/getY()` para posicion, `getRadius()` para colisiones futuras, `se
 ## Siguiente etapa
 
 Programador 2: agregar `Zombie` y `MovementStrategy`, luego conectar la colision por distancia al cuadrado con `Player` en `GameWorld`.
+
+
+## Sprites 0.3
+
+- 8 direcciones, 3 fotogramas por direccion, fondo transparente.
+- Camina con un ciclo alternado y vuelve a una pose quieta cuando no hay movimiento.
+- Para detalles sobre los archivos y ajustes, lee `docs/PLAYER_SPRITES_0_3.md`.

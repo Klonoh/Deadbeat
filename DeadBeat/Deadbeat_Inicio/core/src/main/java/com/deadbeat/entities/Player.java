@@ -34,6 +34,8 @@ public final class Player implements Damageable {
     private float invulnerabilityRemaining;
     private float facingX;
     private float facingY;
+    private boolean moving;
+    private float walkTime;
 
     /**
      * @param centerX initial center X coordinate
@@ -92,10 +94,14 @@ public final class Player implements Damageable {
         }
         invulnerabilityRemaining = Math.max(0f, invulnerabilityRemaining - delta);
         if (!isAlive()) {
+            moving = false;
+            walkTime = 0f;
             return;
         }
 
         if (!Float.isFinite(horizontal) || !Float.isFinite(vertical)) {
+            moving = false;
+            walkTime = 0f;
             return;
         }
 
@@ -104,6 +110,8 @@ public final class Player implements Damageable {
         vertical = clamp(vertical, -1f, 1f);
         float lengthSquared = horizontal * horizontal + vertical * vertical;
         if (lengthSquared <= 0f) {
+            moving = false;
+            walkTime = 0f;
             return;
         }
         if (lengthSquared > 1f) {
@@ -112,7 +120,11 @@ public final class Player implements Damageable {
             vertical *= inverseLength;
         }
 
-        // Remember the last direction for future sprite or attack orientation.
+        moving = true;
+        // Keep the animation phase small to avoid losing float precision in long sessions.
+        walkTime = (walkTime + delta) % 1.76f;
+
+        // Remember the last direction for the sprite and future attacks.
         facingX = horizontal;
         facingY = vertical;
 
@@ -130,6 +142,10 @@ public final class Player implements Damageable {
         }
         health = Math.max(0f, health - amount);
         invulnerabilityRemaining = isAlive() ? INVULNERABILITY_SECONDS : 0f;
+        if (!isAlive()) {
+            moving = false;
+            walkTime = 0f;
+        }
     }
 
     /** Restores some life without exceeding its maximum. */
@@ -157,6 +173,8 @@ public final class Player implements Damageable {
         invulnerabilityRemaining = 0f;
         facingX = 0f;
         facingY = -1f;
+        moving = false;
+        walkTime = 0f;
     }
 
     @Override
@@ -177,6 +195,8 @@ public final class Player implements Damageable {
     public float getInvulnerabilityRemaining() { return invulnerabilityRemaining; }
     public float getFacingX() { return facingX; }
     public float getFacingY() { return facingY; }
+    public boolean isMoving() { return moving; }
+    public float getWalkTime() { return walkTime; }
 
     private static float clamp(float value, float min, float max) {
         return Math.max(min, Math.min(max, value));
