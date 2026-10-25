@@ -3,6 +3,14 @@ package com.deadbeat.entities;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.math.Rectangle;
+import com.deadbeat.weapons.Weapon;
+import com.deadbeat.weapons.ElectricGuitar;
+import com.deadbeat.weapons.Drumsticks;
+import com.deadbeat.world.GameWorld;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Player's gameplay state. Coordinates represent the CENTER of its circular hitbox.
@@ -36,6 +44,17 @@ public final class Player implements Damageable {
     private float facingY;
     private boolean moving;
     private float walkTime;
+    private final List<Weapon> weapons = new ArrayList<>();
+
+    public List<Weapon> getWeapons() {
+        return Collections.unmodifiableList(weapons);
+    }
+
+    public void updateWeapons(float delta, GameWorld world) {
+        for (Weapon weapon : weapons) {
+            weapon.update(delta, this, world);
+        }
+    }
 
     /**
      * @param centerX initial center X coordinate
@@ -165,6 +184,9 @@ public final class Player implements Damageable {
 
     /** Resets all mutable state, including position and temporary immunity. */
     public void reset() {
+        weapons.clear();
+        weapons.add(new ElectricGuitar());
+        weapons.add(new Drumsticks());
         x = spawnX;
         y = spawnY;
         moveSpeed = DEFAULT_SPEED;
