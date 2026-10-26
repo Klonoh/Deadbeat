@@ -4,7 +4,7 @@ import com.badlogic.gdx.math.Rectangle;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
-/** Logic-only tests: require neither a window nor a LibGDX graphics context. */
+
 public class PlayerTest {
     private static final float EPS = 0.001f;
 

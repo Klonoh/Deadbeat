@@ -7,13 +7,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Disposable;
 import com.deadbeat.entities.Player;
 
-/**
- * Presentation-only component: maps the Player's facing direction and walking
- * timer to a frame. The sprite sheet is loaded once, not during render().
- *
- * The sheet contains eight rows (directions) x three columns (idle, walk, walk).
- * Each frame is 64x80 with transparency and foot alignment.
- */
+
 public final class PlayerSpriteRenderer implements Disposable {
     private static final int FRAME_WIDTH = 64;
     private static final int FRAME_HEIGHT = 80;
@@ -35,7 +29,7 @@ public final class PlayerSpriteRenderer implements Disposable {
     }
 
     public void draw(SpriteBatch batch, Player player) {
-        // Preserve the existing short damage-flash feedback from prototype 0.2.
+
         if (player.isInvulnerable()
                 && ((int) (player.getInvulnerabilityRemaining() * 14f) % 2 == 0)) {
             return;
@@ -48,7 +42,7 @@ public final class PlayerSpriteRenderer implements Disposable {
                 : 0;
 
         batch.setColor(1f, 1f, 1f, 1f);
-        // Frame bottom is placed near feet; the 14-unit hitbox remains unchanged.
+
         batch.draw(frames[row][frame], player.getX() - FRAME_WIDTH / 2f,
                 player.getY() - 13f, FRAME_WIDTH, FRAME_HEIGHT);
     }

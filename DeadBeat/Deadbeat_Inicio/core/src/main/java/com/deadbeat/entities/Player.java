@@ -3,14 +3,8 @@ package com.deadbeat.entities;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.math.Rectangle;
+import com.deadbeat.world.CollisionMap;
 
-/**
- * Player's gameplay state. Coordinates represent the CENTER of its circular hitbox.
- *
- * Input is read in update(delta), but the overload receiving movement axes can be
- * exercised without creating a LibGDX window (e.g. in automated tests).
- * This class does not allocate textures, render anything or own disposable assets.
- */
 public final class Player implements Damageable {
 
     public static final float DEFAULT_SPEED = 185f;
@@ -57,14 +51,16 @@ public final class Player implements Damageable {
         arenaTop = arena.y + arena.height;
         radius = DEFAULT_RADIUS;
 
-        // Store a legal spawn to guarantee that reset cannot place the player out of bounds.
         spawnX = clamp(centerX, arenaLeft + radius, arenaRight - radius);
         spawnY = clamp(centerY, arenaBottom + radius, arenaTop - radius);
         reset();
     }
 
-    /** Updates the player using WASD or arrow keys. Opposite keys cancel each other. */
     public void update(float delta) {
+        update(delta, (CollisionMap) null);
+    }
+
+    public void update(float delta, CollisionMap solidMap) {
         float horizontal = 0f;
         float vertical = 0f;
 
@@ -81,14 +77,16 @@ public final class Player implements Damageable {
             vertical += 1f;
         }
 
-        update(delta, horizontal, vertical);
+        update(delta, horizontal, vertical, solidMap);
     }
 
-    /**
-     * Advances simulation with explicit directional axes, independently of keyboard.
-     * Axes are expected in [-1, 1]. Diagonal direction is normalized, not accelerated.
-     */
+
     public void update(float delta, float horizontal, float vertical) {
+        update(delta, horizontal, vertical, null);
+    }
+
+
+    public void update(float delta, float horizontal, float vertical, CollisionMap solidMap) {
         if (!Float.isFinite(delta) || delta <= 0f) {
             return;
         }
@@ -105,7 +103,7 @@ public final class Player implements Damageable {
             return;
         }
 
-        // Clamp externally supplied axes (e.g. a future analog controller).
+
         horizontal = clamp(horizontal, -1f, 1f);
         vertical = clamp(vertical, -1f, 1f);
         float lengthSquared = horizontal * horizontal + vertical * vertical;
@@ -120,18 +118,26 @@ public final class Player implements Damageable {
             vertical *= inverseLength;
         }
 
-        moving = true;
-        // Keep the animation phase small to avoid losing float precision in long sessions.
-        walkTime = (walkTime + delta) % 1.76f;
 
-        // Remember the last direction for the sprite and future attacks.
         facingX = horizontal;
         facingY = vertical;
 
-        x = clamp(x + horizontal * moveSpeed * delta,
+        float oldX = x;
+        float oldY = y;
+        float candidateX = clamp(x + horizontal * moveSpeed * delta,
                 arenaLeft + radius, arenaRight - radius);
-        y = clamp(y + vertical * moveSpeed * delta,
+        if (solidMap == null || !solidMap.collidesCircle(candidateX, y, radius)) {
+            x = candidateX;
+        }
+        float candidateY = clamp(y + vertical * moveSpeed * delta,
                 arenaBottom + radius, arenaTop - radius);
+        if (solidMap == null || !solidMap.collidesCircle(x, candidateY, radius)) {
+            y = candidateY;
+        }
+
+        moving = x != oldX || y != oldY;
+
+        walkTime = moving ? (walkTime + delta) % 1.76f : 0f;
     }
 
     @Override
@@ -148,14 +154,14 @@ public final class Player implements Damageable {
         }
     }
 
-    /** Restores some life without exceeding its maximum. */
+
     public void heal(float amount) {
         if (isAlive() && Float.isFinite(amount) && amount > 0f) {
             health = Math.min(maxHealth, health + amount);
         }
     }
 
-    /** Prepared for the movement-speed upgrade in later iterations. */
+
     public void setMoveSpeed(float newSpeed) {
         if (!Float.isFinite(newSpeed) || newSpeed <= 0f) {
             throw new IllegalArgumentException("Move speed must be finite and positive");
@@ -163,7 +169,6 @@ public final class Player implements Damageable {
         moveSpeed = newSpeed;
     }
 
-    /** Resets all mutable state, including position and temporary immunity. */
     public void reset() {
         x = spawnX;
         y = spawnY;

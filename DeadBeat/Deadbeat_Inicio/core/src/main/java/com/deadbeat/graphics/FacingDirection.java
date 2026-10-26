@@ -1,9 +1,6 @@
 package com.deadbeat.graphics;
 
-/**
- * Artwork row order. The first direction (DOWN) is the default player facing.
- * Angles are grouped in 45-degree sectors, including diagonals.
- */
+
 public enum FacingDirection {
     DOWN, DOWN_RIGHT, RIGHT, UP_RIGHT, UP, UP_LEFT, LEFT, DOWN_LEFT;
 

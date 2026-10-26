@@ -14,3 +14,6 @@ not the collision radius in `Player`. The sprite's artwork and hitbox are indepe
 
 **To adjust walking tempo:** edit `STEP_SECONDS` and `WALK_SEQUENCE` in
 `PlayerSpriteRenderer`.
+
+
+- Transparency edge cleanup: `player_walk.png` was cleaned to remove green halo artifacts from the original background.

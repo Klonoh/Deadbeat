@@ -1,103 +1,53 @@
-# DEADBEAT - Prototipo 0.3 (Player + sprites 8 direcciones)
+# DEADBEAT — Prototipo 0.4 · Ciudad explorable
 
-Survivors-like de zombis, estetica punk y armas-instrumento. Este ZIP es la **primera entrega jugable del movimiento del jugador**. Se basa en la estructura 0.1 (`DeadbeatGame`, `GameScreen`, `GameWorld`) y anade `Player` y `Damageable`.
+Videojuego Java 11 con LibGDX 1.14.2 y Gradle Wrapper 7.6.4.
 
-## Herramientas
+**Esta versión incorpora una ciudad postapocalíptica navegable con calles, aceras, edificios, vehículos abandonados, cámara que sigue al jugador y colisiones físicas.** Conserva el personaje punk animado en ocho direcciones de Deadbeat 0.3.1.
 
-- **Java JDK 11** (compilacion orientada a Java 11).
-- **Gradle Wrapper 7.6.4** (incluido: no necesitas instalar Gradle aparte).
-- **LibGDX 1.14.2**, backend de escritorio LWJGL3.
-- Internet la primera vez para descargar Gradle, LibGDX y JUnit.
+## Ejecutar en Windows
 
-## Ejecutar en Windows (PowerShell)
-
-Desde la carpeta raiz que contiene `gradlew.bat`:
+1. Extraer el ZIP completo (no abrir el juego directamente desde el ZIP).
+2. Instalar / seleccionar JDK 11 en el IDE si no está configurado.
+3. Abrir PowerShell dentro de `Deadbeat`.
+4. Ejecutar:
 
 ```powershell
-java -version
-.\gradlew.bat :core:compileJava :lwjgl3:compileJava
 .\gradlew.bat :lwjgl3:run
 ```
 
-En Eclipse/NetBeans, importa como **proyecto Gradle** y ejecuta `lwjgl3 > run`. Selecciona **Gradle Wrapper**, no una version global como Gradle 8.3.
-
-## Controles
-
-| Entrada | Funcion |
-|---|---|
-| **WASD** o **flechas** | Mover al personaje en ocho direcciones |
-| **H** | Aplicar 20 puntos de dano (control de prueba) |
-| **R** | Reiniciar posicion, vida, velocidad, inmunidad y tiempo |
-| **ESC** | Cerrar juego |
-
-`H` y `R` son controles de depuracion **temporales** y no son parte del gameplay definitivo.
-
-El personaje utiliza la hoja `assets/sprites/player_walk.png` con transparencia, 8 direcciones y 3 poses por direccion. El PNG original esta incluido en `assets/sprites/player_original.png`.
-
-## Comportamiento implementado
-
-- Posicion en el **centro** del jugador, radio de colision 14 unidades.
-- Velocidad 185 unidades/segundo, independiente de FPS usando `delta`.
-- Movimiento diagonal normalizado: W + D NO acelera respecto de W.
-- Limites de arena que consideran el radio completo; el jugador no cruza muros.
-- Vida 100/100; `Damageable.takeDamage()`; muerte a HP 0 y bloqueo del movimiento.
-- Invulnerabilidad de 0.65 segundos al recibir dano; indicador y parpadeo visual.
-- `Player.update(delta, horizontal, vertical)` permite probar logica sin ventana.
-- Una textura 1x1 reutilizada para dibujar la arena y una textura de sprites cargada una sola vez para el personaje.
-- Manejo centralizado de recursos (`dispose`) para `Texture`, `SpriteBatch`, `BitmapFont` y sprites del personaje.
-
-## Prueba manual propuesta
-
-1. Abre el juego: se ve la arena y el sprite punk animado en el centro.
-2. Mueve con WASD o flechas; prueba diagonales y soltar todas las teclas.
-3. Ve a los cuatro bordes y observa que el personaje no puede salir.
-4. Pulsa **H** una vez: 100 -> 80 y aparece `INVULNERABLE`.
-5. Pulsa **H** inmediatamente: permanece 80. Espera 0.65 s y pulsa otra vez: 80 -> 60.
-6. Pulsa **H** con suficiente separacion entre pulsaciones hasta llegar a cero: deja de moverse.
-7. Pulsa **R**: vuelve al centro con 100 HP y temporizador a cero.
-8. Redimensiona la ventana: la imagen conserva proporcion 16:9.
-
-## Pruebas automatizadas
+El primer arranque puede descargar Gradle y LibGDX mediante internet. Para ejecutar pruebas de lógica:
 
 ```powershell
 .\gradlew.bat :core:test
 ```
 
-Incluye pruebas JUnit4 de normalizacion, delta, limites, vida, invulnerabilidad, reinicio y validaciones. No necesitan iniciar una ventana. (JUnit se descarga automaticamente la primera vez.)
+## Controles
 
-## Clases clave
+| Tecla | Acción |
+|---|---|
+| WASD / flechas | Caminar (8 direcciones) |
+| H | Quitar 20 HP (prueba) |
+| R | Reiniciar personaje y cronómetro |
+| ESC | Cerrar juego |
 
-```text
-core/src/main/java/com/deadbeat/
-├── DeadbeatGame.java
-├── entities/
-│   ├── Damageable.java     <- interfaz reusable por Player/Zombie
-│   └── Player.java         <- atributos privados, movimiento, vida y estado
-├── screens/
-│   └── GameScreen.java     <- HUD, entrada de prueba, ventana y renderizado
-└── world/
-    └── GameWorld.java     <- limites de la arena y dibujo del protagonista
-```
+## Qué probar primero
 
-## Ajustes para tus pruebas
+- Caminar 15–30 segundos por una calle: ver que el escenario sigue extendiéndose y el personaje permanece centrado.
+- Moverse contra los edificios, pasar por las aceras, rodear automóviles y comprobar que no puedes atravesarlos.
+- Avanzar en diagonal hacia una pared para comprobar que el jugador se desliza por ella.
+- Regresar sobre tus pasos y verificar que el barrio no cambia.
+- Probar daño (`H`) y reinicio (`R`).
 
-Edita en `Player.java`:
-- `DEFAULT_SPEED` para desplazamiento (actual: 185).
-- `DEFAULT_MAX_HEALTH` para vida maxima (actual: 100).
-- `DEFAULT_RADIUS` para hitbox y distancia a muros (actual: 14).
-- `INVULNERABILITY_SECONDS` (actual: 0.65).
+## Estructura principal
 
-Se usa `getX()/getY()` para posicion, `getRadius()` para colisiones futuras, `setMoveSpeed()` para una mejora futura y `Damageable` para permitir aplicar dano a jugadores y zombies sin conocer sus clases.
+- `core/.../entities/Player.java`: movimiento, vida, orientación, colisiones y estado de animación.
+- `core/.../world/CollisionMap.java`: contrato para colisiones de entidades.
+- `core/.../world/CityMap.java`: geometría y bloques de ciudad deterministas.
+- `core/.../world/CityRenderer.java`: renderizado de la región visible de la ciudad.
+- `core/.../world/GameWorld.java`: estado de simulación e integración.
+- `core/.../screens/GameScreen.java`: cámara que sigue al jugador, dos viewports y HUD.
+- `core/.../graphics/PlayerSpriteRenderer.java`: animación de caminar.
+- `assets/world/city_tiles.png`: atlas de suelo.
+- `assets/sprites/player_walk.png`: spritesheet transparente del protagonista.
 
-**No incluidos aun:** zombies, ataques, armas, experiencia, oleadas y menu definitivo. Los controles H/R solo sirven para validar `Player` antes de la integracion.
-
-## Siguiente etapa
-
-Programador 2: agregar `Zombie` y `MovementStrategy`, luego conectar la colision por distancia al cuadrado con `Player` en `GameWorld`.
-
-
-## Sprites 0.3
-
-- 8 direcciones, 3 fotogramas por direccion, fondo transparente.
-- Camina con un ciclo alternado y vuelve a una pose quieta cuando no hay movimiento.
-- Para detalles sobre los archivos y ajustes, lee `docs/PLAYER_SPRITES_0_3.md`.
+**Nota**: todavía no hay enemigos ni instrumentos musicales; el objetivo actual es probar la navegación y el nuevo mundo.
