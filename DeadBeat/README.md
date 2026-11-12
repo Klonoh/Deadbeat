@@ -1,83 +1,101 @@
-# DEADBEAT - Prototipo 0.1
+# DEADBEAT — 0.5.3: Props corregidos, vallas y bolsas interactivas
 
-Juego 2D de supervivencia contra zombies con estetica punk, creado para el proyecto de Programacion Avanzada.
-Este primer prototipo solo muestra una arena y una marca neon animada para verificar que el ciclo de renderizado funciona. Aun no hay jugador, zombies ni armas.
+**Base:** Deadbeat 0.5.2 (ZIP verificado disponible). Java 11, LibGDX 1.14.2, Gradle Wrapper 7.6.4.
 
-## Requisitos
+## Nuevas funciones
 
-- JDK 11 para compilar y ejecutar este proyecto (el codigo fuente usa Java 11).
-- Internet en el primer inicio, para que Gradle descargue dependencias y su distribucion.
-- Eclipse con Buildship o NetBeans con soporte para Gradle (o bien terminal).
+- Se corrigieron los PNG extraídos de los atlas (`fence`, `crate`, `pallet`, `barrier`, `concrete_barricade`, `planter`, `garbage`, `graffiti_wall`, `tent`, `dumpster`, `barrels`). Ya no contienen piezas de recursos vecinos.
+- Las vallas ahora son obstáculos físicos del mapa: no pueden atravesarse con el jugador. Se distribuyen en zonas industriales, estacionamientos y campamentos.
+- Las bolsas de basura se rompen automáticamente cuando el jugador pasa por ellas. No detienen el movimiento; después de romperse se muestran con **una de tres variantes PNG** según su ubicación.
+- El estado de una bolsa rota persiste al salir del bloque y regresar. `R` reinicia la partida y restaura las bolsas intactas.
+- El HUD muestra cuántas bolsas se han roto.
 
-El wrapper se ha configurado con Gradle 7.6.4, compatible con ejecucion en JDK 11.
-Dependencia: libGDX 1.14.2 y backend LWJGL3.
+## Ejecutar en Windows
 
-## Ejecutar
-
-Desde la carpeta raiz del proyecto:
-
-**Windows, PowerShell:**
+En PowerShell, dentro de esta carpeta:
 
 ```powershell
 .\gradlew.bat :lwjgl3:run
 ```
 
-**Linux o macOS:**
+## Prueba manual recomendada
 
-```bash
-./gradlew :lwjgl3:run
-```
+1. Camina hasta un campamento, un estacionamiento o una nave industrial y choca contra una valla. No debes poder atravesarla.
+2. Comprueba que la valla y las cajas ya no tienen postes ni pedazos laterales duplicados.
+3. Camina encima de una bolsa de basura; debe transformarse inmediatamente en una pila abierta o rasgada.
+4. Pasa nuevamente sobre la misma bolsa: no debe regenerarse ni volver a aumentar el contador.
+5. Aléjate varias pantallas y vuelve. La bolsa seguirá rota, incluso si el sector se regeneró en la caché.
+6. Encuentra más bolsas y comprueba que aparecen tres roturas visuales distintas.
+7. Pulsa `R`: las bolsas deben aparecer intactas nuevamente.
 
-Para comprobar la compilacion sin abrir una ventana:
+**Controles:** WASD o flechas para moverte, H para probar daño, R para reiniciar y ESC para salir.
+
+Detalles técnicos y archivos: `docs/PROPS_0_5_3.md`.
+
+> Esta versión fue preparada desde el ZIP 0.5.2, no desde la rama actual de `Klonoh/Deadbeat`, porque la consulta de GitHub no devolvió el contenido. No reemplaces cambios más recientes del equipo sin comparar primero.
+
+---
+
+## Actualización 0.5.2: texturas ancladas al mundo
+Se eliminó la modificación de UV en función de la cámara. El suelo se dibuja
+sobre baldosas fijas de 64 × 64 unidades de mundo. Ver `docs/WORLD_0_5_2_TEXTURE_FIX.md`.
+
+# Deadbeat 0.5.1 — Reparación de baldosas y estabilidad visual
+
+Esta versión parte de 0.5, conserva su ciudad, sprites y colisiones, y corrige defectos de los pavimentos y la cámara.
+
+**Cambios:** los materiales de suelo son PNGs repetibles independientes en `assets/world2/surfaces`; las avenidas y calles se dibujan como geometrías continuas, y las líneas viales se trazan por eje de carretera, sin depender de tiles. La cámara y el protagonista se alinean a píxeles enteros (solo la representación gráfica: la física conserva decimales). Se ajustó la cadencia visual de pasos.
+
+Para Windows: `gradlew.bat :lwjgl3:run`. Pruebas: `gradlew.bat :core:test`.
+
+No se modificaron las colisiones ni las posiciones de edificios, de modo que la ciudad y las calles conservan su navegabilidad.
+
+# DEADBEAT — Ciudad Punk 0.5
+
+Prototipo LibGDX en Java 11: personaje punk animado en un mundo urbano postapocalíptico generado de forma determinista. Esta entrega actualiza el motor de escenarios del prototipo 0.4.
+
+## Ejecutar (Windows)
+
+1. Extraer el ZIP y entrar en la carpeta principal del proyecto.
+2. Abrir PowerShell y ejecutar:
 
 ```powershell
-.\gradlew.bat :core:compileJava :lwjgl3:compileJava
+.\gradlew.bat :lwjgl3:run
 ```
 
-Si estas en NetBeans o Eclipse, importa la carpeta raiz como proyecto Gradle. Ejecuta la tarea `lwjgl3 -> application -> run`.
-Usa JDK 11 como Java de Gradle. Si utilizas un JDK mas moderno para compilar, consulta la matriz de compatibilidad de Gradle.
+En Linux/macOS: `./gradlew :lwjgl3:run`. La primera ejecución requiere conexión a internet para las dependencias Gradle/LibGDX. JDK recomendado: Java 11. El wrapper conserva Gradle 7.6.4.
 
-## Que deberias ver
+## Controles
 
-- Una ventana 960x540 llamada `DEADBEAT - Prototipo 0.1`.
-- Arena oscura con bordes fucsia y cuadrícula.
-- Un pequeño indicador verde que late en el centro (demuestra `update(delta)`).
-- Contador de segundos que avanza.
-- Tecla `ESC` para salir.
+- `W A S D` o flechas: caminar y explorar (cámara centrada).
+- `H`: recibir 20 puntos de daño para pruebas.
+- `R`: regresar al punto inicial y restaurar la vida.
+- `ESC`: salir.
 
-Si ves lo anterior, los tres componentes principales estan comunicandose correctamente.
+## Esta versión
 
-## Estructura del proyecto
+- Calles principales continuas en dos ejes, con anchos variables y pasos peatonales.
+- Manzanas rectangulares irregulares, edificios de diferentes tamaños, pasajes y lotes abiertos.
+- 6 sectores reproducibles: tiendas, viviendas, industria, estacionamientos, campamentos y callejones.
+- PNG separados para suelos, edificios, fachadas, chatarra y mobiliario urbano.
+- Los edificios, coches y obstáculos grandes tienen colisión circular-contra-rectángulo.
+- Solo se dibuja lo que está dentro del rectángulo visible de la cámara (con margen); mapa y bloques cargados a demanda.
+- Se mantienen el protagonista, su sprite animado, vida, invulnerabilidad, teclado y cámara de 0.4.
 
-```
-Deadbeat_Inicio/
-├── core/
-│   └── src/main/java/com/deadbeat/
-│       ├── DeadbeatGame.java
-│       ├── screens/GameScreen.java
-│       └── world/GameWorld.java
-├── lwjgl3/
-│   └── src/main/java/com/deadbeat/lwjgl3/Lwjgl3Launcher.java
-├── assets/
-├── gradle/wrapper/
-├── gradlew
-├── gradlew.bat
-├── settings.gradle
-├── build.gradle
-└── README.md
-```
+## Archivos importantes
 
-## Responsables sugeridos
+- `core/src/main/java/com/deadbeat/world/CityMap.java`: calles, parcelas, edificios, distritos y colisiones.
+- `core/src/main/java/com/deadbeat/world/CityRenderer.java`: dibujo PNG del suelo, fachadas, objetos y aceras.
+- `core/src/main/java/com/deadbeat/world/GameWorld.java`: integra mundo y jugador.
+- `core/src/main/java/com/deadbeat/screens/GameScreen.java`: cámara y HUD.
+- `assets/world2/`: PNG utilizados por el mundo. Los materiales del suelo están en `surfaces/` y se repiten sin costuras; ya no se usa el antiguo atlas `ground.png`.
+- `assets/sprites/player_walk.png`: sprite animado del jugador (sin cambios de animación).
+- `docs/WORLD_0_5.md`: guía técnica, parámetros y pruebas.
 
-- **Programador 1:** `GameScreen`, luego `Player` y control del teclado.
-- **Programador 2:** `GameWorld` y luego `Zombie` y estrategias de movimiento.
-- **Ambos:** revisar contratos e integrar funcionalidades en `DeadbeatGame`.
+## Nota sobre el repositorio
 
-## Siguiente fase
+El código base para este ZIP es la copia verificable de Deadbeat 0.4 proporcionada en la conversación. No se modificó directamente `Klonoh/Deadbeat`, porque no fue posible obtener la rama actual desde GitHub. Antes de fusionar, comparar las diferencias con los cambios más recientes del equipo.
 
-Implementar `Player`, `Zombie`, `Damageable`, `MovementStrategy` y `ChaseMovement`.
-En esta fase se acuerda si se dibujara cada entidad con sprites o con la textura de prueba.
+## Verificación
 
-## Nota
-
-El codigo fue escrito para Deadbeat y no copia clases ni metodos de los juegos de referencia. La carpeta `gradle/wrapper` contiene herramientas de compilacion de Gradle (no logica de videojuego).
+Los archivos Java se compilaron con Java 11 mediante dobles de prueba de las APIs de LibGDX y se superaron 29 pruebas de lógica. La compilación con dependencias oficiales y el renderizado real de LWJGL3 quedan pendientes de ejecución local porque este entorno no pudo descargar Gradle.

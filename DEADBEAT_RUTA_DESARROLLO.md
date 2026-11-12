@@ -69,7 +69,7 @@ Este documento es **la hoja de ruta de implementación**, no el informe final pa
 ### 1.1 Archivos que existen en el ZIP
 
 ```text
-Deadbeat_Inicio/
+DeadBeat/
 ├── build.gradle
 ├── settings.gradle
 ├── gradle.properties
@@ -110,7 +110,7 @@ Deadbeat_Inicio/
 
 ### 1.3 Comandos de arranque y validación
 
-Abrir una terminal en la raíz `Deadbeat_Inicio/`:
+Abrir una terminal en la raíz `DeadBeat/`:
 
 ```powershell
 # Windows / PowerShell
