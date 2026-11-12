@@ -269,8 +269,135 @@ public final class CityMap implements CollisionMap {
             float ry=streetCenter(by)+streetHalf(by)-26f;
             add(solids,rx,ry,96,46,Kind.CAR,2+s%2);
         }
+        resolveLayout(solids, decals, west, south, east, north);
         return new CityBlock(bx,by,district,west,south,east,north,
             solids.toArray(new Obstacle[0]), decals.toArray(new Decoration[0]));
+    }
+
+    private void resolveLayout(List<Obstacle> solids,List<Decoration> decals,
+                               float west,float south,float east,float north) {
+        resolveObstacleOverlaps(solids, west, south, east, north);
+        List<Decoration> cleaned = new ArrayList<Decoration>(decals.size());
+        for (Decoration d : decals) {
+            Decoration placed = relocateDecoration(d, cleaned, solids, west, south, east, north);
+            if (placed != null) cleaned.add(placed);
+        }
+        decals.clear();
+        decals.addAll(cleaned);
+    }
+
+    private void resolveObstacleOverlaps(List<Obstacle> solids,float west,float south,float east,float north) {
+        List<Obstacle> kept = new ArrayList<Obstacle>(solids.size());
+        for (Obstacle o : solids) {
+            if (o.kind == Kind.BUILDING) { kept.add(o); continue; }
+            if (!overlapsAny(o, kept, obstaclePadding(o.kind))) { kept.add(o); continue; }
+            Obstacle moved = relocateObstacle(o, kept, west, south, east, north);
+            if (moved != null) kept.add(moved);
+        }
+        solids.clear();
+        solids.addAll(kept);
+    }
+
+    private Obstacle relocateObstacle(Obstacle o,List<Obstacle> solids,float west,float south,float east,float north) {
+        float[] tries = new float[]{0f, 18f, -18f, 36f, -36f, 54f, -54f, 72f, -72f};
+        float pad = obstaclePadding(o.kind);
+        for (float dy : tries) for (float dx : tries) {
+            float nx = clamp(o.x + dx, west, east - o.width);
+            float ny = clamp(o.y + dy, south, north - o.height);
+            Obstacle candidate = new Obstacle(nx, ny, o.width, o.height, o.kind, o.style);
+            if (!overlapsAny(candidate, solids, pad)) return candidate;
+        }
+        return null;
+    }
+
+    private Decoration relocateDecoration(Decoration d,List<Decoration> placed,List<Obstacle> solids,
+                                          float west,float south,float east,float north) {
+        float[] tries = new float[]{0f, 14f, -14f, 28f, -28f, 42f, -42f, 56f, -56f};
+        float pad = decorationPadding(d.kind);
+        boolean avoidDecor = avoidDecorationOverlap(d.kind);
+        for (float dy : tries) for (float dx : tries) {
+            float nx = clamp(d.x + dx, west, east - d.width);
+            float ny = clamp(d.y + dy, south, north - d.height);
+            Decoration candidate = new Decoration(nx, ny, d.width, d.height, d.kind, d.style);
+            if (overlapsAny(candidate, solids, pad)) continue;
+            if (avoidDecor && overlapsAnyDecor(candidate, placed, pad)) continue;
+            return candidate;
+        }
+        return null;
+    }
+
+    private static boolean avoidDecorationOverlap(DecorKind kind) {
+        switch (kind) {
+            case PAPER:
+            case WEEDS:
+            case PUDDLE:
+            case GRAFFITI:
+                return false;
+            default:
+                return true;
+        }
+    }
+
+    private static float obstaclePadding(Kind kind) {
+        switch (kind) {
+            case FENCE: return 8f;
+            case CAR: return 6f;
+            case DUMPSTER:
+            case TENT:
+            case CRATE:
+            case BARRICADE:
+            case PLANTER:
+                return 5f;
+            default: return 0f;
+        }
+    }
+
+    private static float decorationPadding(DecorKind kind) {
+        switch (kind) {
+            case LAMP: return 8f;
+            case BENCH:
+            case VENDING:
+            case POWER:
+            case BARREL:
+            case TIRES:
+            case PALLET:
+            case BIN:
+            case FENCE:
+                return 5f;
+            case TRASH: return 4f;
+            default: return 1f;
+        }
+    }
+
+    private static boolean overlapsAny(Obstacle o,List<Obstacle> others,float padding) {
+        for (Obstacle other : others) {
+            if (intersects(o.x, o.y, o.width, o.height, other.x, other.y, other.width, other.height, padding)) return true;
+        }
+        return false;
+    }
+
+    private static boolean overlapsAny(Decoration d,List<Obstacle> others,float padding) {
+        for (Obstacle other : others) {
+            if (intersects(d.x, d.y, d.width, d.height, other.x, other.y, other.width, other.height, padding)) return true;
+        }
+        return false;
+    }
+
+    private static boolean overlapsAnyDecor(Decoration d,List<Decoration> others,float padding) {
+        for (Decoration other : others) {
+            if (intersects(d.x, d.y, d.width, d.height, other.x, other.y, other.width, other.height, padding)) return true;
+        }
+        return false;
+    }
+
+    private static boolean intersects(float ax,float ay,float aw,float ah,
+                                      float bx,float by,float bw,float bh,float padding) {
+        return ax + aw > bx + padding && ax + padding < bx + bw
+            && ay + ah > by + padding && ay + padding < by + bh;
+    }
+
+    private static float clamp(float value,float min,float max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     private static void addBuilding(List<Obstacle> solids,float x,float y,float w,float h,int style) {

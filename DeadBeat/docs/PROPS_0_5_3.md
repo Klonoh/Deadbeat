@@ -42,3 +42,9 @@ Además se comprobaron las dimensiones y transparencia de los PNG corregidos. El
 - Para modificar la distancia a la que se rompen las bolsas: `CityMap.breakGarbageNear` y el radio pasado desde `GameWorld.update`.
 - Para sustituir las tres variantes visuales: editar los PNG, conservando el tamaño de 77 × 62 y el fondo transparente.
 - Para añadir más variantes: cargar los nuevos nombres en `CityRenderer.FILES` y ampliar `brokenGarbageVariant`.
+
+
+## 0.5.4 ajuste visual y de solapamientos
+- Se limpiaron recortes defectuosos en `garage_front.png`, `powerbox.png`, `roof_unit.png` y `car_horizontal_blue.png`.
+- Se añadió una pasada de resolución de solapamientos en `CityMap` para recolocar o descartar decoraciones que choquen con obstáculos (por ejemplo, neumáticos superpuestos con vallas).
+- Se conservan las colisiones físicas de las vallas y la interacción con bolsas de basura.
