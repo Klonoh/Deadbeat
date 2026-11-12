@@ -1,6 +1,8 @@
 package com.deadbeat.world;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,6 +64,9 @@ public final class CityMap implements CollisionMap {
         public int decorationCount(){return decorations.length;}
         public Decoration decoration(int i){return decorations[i];}
     }
+
+    /** Bag interactions persist even when the LRU map cache evicts a block. */
+    private final Set<Long> brokenGarbageIds = new HashSet<Long>();
 
     private final LinkedHashMap<Long,CityBlock> cache =
         new LinkedHashMap<Long,CityBlock>(128,0.75f,true) {
@@ -200,6 +205,7 @@ public final class CityMap implements CollisionMap {
                 add(solids,west+135,south+45,62,60,Kind.CRATE,0);
                 addDec(decals,west+w*.71f,south+30,113,54,DecorKind.BARREL,s);
                 addDec(decals,west+220,south+70,84,64,DecorKind.PALLET,s);
+                add(solids,west+w*.72f,south+15f,138,73,Kind.FENCE,s);
                 break;
             case PARKING:
                 // Spacious parking/abandoned garage plot instead of four uniform buildings.
@@ -209,13 +215,15 @@ public final class CityMap implements CollisionMap {
                 add(solids,west+34,south+ht*.20f,92,69,Kind.BARRICADE,0);
                 addDec(decals,west+w*.55f,south+52,100,72,DecorKind.TIRES,s);
                 addDec(decals,west+50,south+50,90,54,DecorKind.WEEDS,s);
+                add(solids,west+w*.63f,south+ht*.13f,125,66,Kind.FENCE,s);
                 break;
             case CAMP:
                 addBuilding(solids,west+12,north-ht*.36f,w*.35f,ht*.31f,6+s%3);
                 add(solids,west+w*.63f,south+ht*.42f,160,100,Kind.TENT,0);
                 add(solids,west+w*.48f,south+ht*.08f,65,65,Kind.CRATE,0);
                 addDec(decals,west+50,south+35,132,70,DecorKind.TRASH,s);
-                addDec(decals,west+w*.54f,south+ht*.66f,150,69,DecorKind.FENCE,s);
+                // Fence is a physical obstacle, not a decorative decal.
+                add(solids,west+w*.54f,south+ht*.66f,144,76,Kind.FENCE,s);
                 addDec(decals,west+w*.22f,south+ht*.45f,97,70,DecorKind.PUDDLE,s);
                 break;
             case BACKSTREET:
@@ -275,6 +283,51 @@ public final class CityMap implements CollisionMap {
         list.add(new Decoration(x,y,w,h,kind,style));
     }
 
+    /** Stable bag ID: 24 bits per block axis (ample for this world), 16 for decoration index. */
+    private static long garbageId(int bx,int by,int decorationIndex) {
+        return ((bx & 0xffffffL) << 40) | ((by & 0xffffffL) << 16)
+                | (decorationIndex & 0xffffL);
+    }
+
+    /** Called once per frame after the player has moved; bags never block movement. */
+    public int breakGarbageNear(float x,float y,float playerRadius) {
+        if (!Float.isFinite(x) || !Float.isFinite(y) || !Float.isFinite(playerRadius)
+                || playerRadius < 0f) return 0;
+        int x0=avenueIndex(x-playerRadius)-1,x1=avenueIndex(x+playerRadius)+1;
+        int y0=streetIndex(y-playerRadius)-1,y1=streetIndex(y+playerRadius)+1;
+        int broken=0;
+        for(int bx=x0;bx<=x1;bx++)for(int by=y0;by<=y1;by++) {
+            CityBlock block=getBlock(bx,by);
+            for (int n=0;n<block.decorationCount();n++) {
+                Decoration d=block.decoration(n);
+                if (d.kind!=DecorKind.TRASH) continue;
+                if (circleIntersectsRect(x,y,playerRadius,d.x,d.y,d.width,d.height)
+                        && brokenGarbageIds.add(garbageId(bx,by,n))) broken++;
+            }
+        }
+        return broken;
+    }
+
+    /** Stable, decorative-only variation: a bag breaks differently in each location. */
+    public int brokenGarbageVariant(int bx,int by,int decorationIndex) {
+        return positive(variation(bx*37+decorationIndex,by,0xA023),3);
+    }
+
+    public boolean isGarbageBroken(int bx,int by,int decorationIndex) {
+        return brokenGarbageIds.contains(garbageId(bx,by,decorationIndex));
+    }
+
+    public int brokenGarbageCount() { return brokenGarbageIds.size(); }
+    public void resetGarbage() { brokenGarbageIds.clear(); }
+
+    private static boolean circleIntersectsRect(float x,float y,float radius,
+            float left,float bottom,float width,float height) {
+        float cx=Math.max(left,Math.min(x,left+width));
+        float cy=Math.max(bottom,Math.min(y,bottom+height));
+        float dx=x-cx,dy=y-cy;
+        return dx*dx+dy*dy <= radius*radius;
+    }
+
     @Override public boolean collidesCircle(float x,float y,float radius) {
         if(!Float.isFinite(x)||!Float.isFinite(y)||!Float.isFinite(radius)||radius<0f)return true;
         if(x-radius<0||y-radius<0||x+radius>WORLD_SIZE||y+radius>WORLD_SIZE)return true;
@@ -285,10 +338,13 @@ public final class CityMap implements CollisionMap {
             CityBlock block=getBlock(i,j);
             for(int k=0;k<block.obstacleCount();k++) {
                 Obstacle o=block.obstacle(k);
-                float nx=Math.max(o.x,Math.min(x,o.x+o.width));
-                float ny=Math.max(o.y,Math.min(y,o.y+o.height));
-                float dx=x-nx,dy=y-ny;
-                if(dx*dx+dy*dy<radius*radius)return true;
+                if(circleIntersectsRect(x,y,radius,o.x,o.y,o.width,o.height))return true;
+            }
+            // Legacy and future decorative fence placements must never be walk-through.
+            for(int k=0;k<block.decorationCount();k++) {
+                Decoration d=block.decoration(k);
+                if(d.kind==DecorKind.FENCE
+                        && circleIntersectsRect(x,y,radius,d.x,d.y,d.width,d.height))return true;
             }
         }
         return false;

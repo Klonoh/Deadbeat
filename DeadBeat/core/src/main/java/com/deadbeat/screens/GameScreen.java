@@ -89,10 +89,10 @@ public final class GameScreen extends ScreenAdapter {
     private void drawHud(Player player) {
         panel(11f, VIEW_HEIGHT - 70f, 525f, 59f);
         font.setColor(Color.WHITE);
-        font.draw(batch, "DEADBEAT  |  CIUDAD PUNK 0.5.2", 22f, VIEW_HEIGHT - 31f);
+        font.draw(batch, "DEADBEAT  |  CIUDAD PUNK 0.5.3", 22f, VIEW_HEIGHT - 31f);
         font.draw(batch, "WASD / flechas: caminar  |  H: dano  |  R: reiniciar  |  ESC: salir",
                 22f, VIEW_HEIGHT - 54f);
-        panel(11f, 10f, 605f, 49f);
+        panel(11f, 10f, 822f, 49f);
         font.draw(batch, "VIDA: " + (int) player.getHealth() + "/"
                 + (int) player.getMaxHealth(), 22f, 41f);
         font.draw(batch, "TIEMPO: " + (int) world.getElapsedTime() + " s", 153f, 41f);
@@ -109,12 +109,13 @@ public final class GameScreen extends ScreenAdapter {
             default: zone = "CIUDAD";
         }
         font.draw(batch, "ZONA: " + zone, 432f, 41f);
+        font.draw(batch, "BOLSAS ROTAS: " + world.getCityMap().brokenGarbageCount(), 617f, 41f);
         if (player.isInvulnerable()) {
             font.draw(batch, "INVULNERABLE", 22f, 24f);
         } else if (!player.isAlive()) {
             font.draw(batch, "SIN VIDA - R PARA REINICIAR", 22f, 24f);
         } else {
-            font.draw(batch, "Explora las tiendas, callejones, parques y zonas industriales.", 22f, 24f);
+            font.draw(batch, "Pasa sobre las bolsas para romperlas. Las vallas bloquean el paso.", 22f, 24f);
         }
     }
 

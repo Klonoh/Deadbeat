@@ -35,6 +35,9 @@ public final class GameWorld implements Disposable {
         if (!Float.isFinite(delta) || delta <= 0f) return;
         elapsedTime += delta;
         player.update(delta, cityMap);
+        if (player.isAlive()) {
+            cityMap.breakGarbageNear(player.getX(),player.getY(),player.getRadius());
+        }
     }
 
     public void draw(SpriteBatch batch, float viewLeft, float viewBottom,
@@ -50,6 +53,7 @@ public final class GameWorld implements Disposable {
 
     public void reset() {
         player.reset();
+        cityMap.resetGarbage();
         elapsedTime = 0f;
     }
 

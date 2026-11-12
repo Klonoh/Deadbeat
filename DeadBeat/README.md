@@ -1,3 +1,41 @@
+# DEADBEAT — 0.5.3: Props corregidos, vallas y bolsas interactivas
+
+**Base:** Deadbeat 0.5.2 (ZIP verificado disponible). Java 11, LibGDX 1.14.2, Gradle Wrapper 7.6.4.
+
+## Nuevas funciones
+
+- Se corrigieron los PNG extraídos de los atlas (`fence`, `crate`, `pallet`, `barrier`, `concrete_barricade`, `planter`, `garbage`, `graffiti_wall`, `tent`, `dumpster`, `barrels`). Ya no contienen piezas de recursos vecinos.
+- Las vallas ahora son obstáculos físicos del mapa: no pueden atravesarse con el jugador. Se distribuyen en zonas industriales, estacionamientos y campamentos.
+- Las bolsas de basura se rompen automáticamente cuando el jugador pasa por ellas. No detienen el movimiento; después de romperse se muestran con **una de tres variantes PNG** según su ubicación.
+- El estado de una bolsa rota persiste al salir del bloque y regresar. `R` reinicia la partida y restaura las bolsas intactas.
+- El HUD muestra cuántas bolsas se han roto.
+
+## Ejecutar en Windows
+
+En PowerShell, dentro de esta carpeta:
+
+```powershell
+.\gradlew.bat :lwjgl3:run
+```
+
+## Prueba manual recomendada
+
+1. Camina hasta un campamento, un estacionamiento o una nave industrial y choca contra una valla. No debes poder atravesarla.
+2. Comprueba que la valla y las cajas ya no tienen postes ni pedazos laterales duplicados.
+3. Camina encima de una bolsa de basura; debe transformarse inmediatamente en una pila abierta o rasgada.
+4. Pasa nuevamente sobre la misma bolsa: no debe regenerarse ni volver a aumentar el contador.
+5. Aléjate varias pantallas y vuelve. La bolsa seguirá rota, incluso si el sector se regeneró en la caché.
+6. Encuentra más bolsas y comprueba que aparecen tres roturas visuales distintas.
+7. Pulsa `R`: las bolsas deben aparecer intactas nuevamente.
+
+**Controles:** WASD o flechas para moverte, H para probar daño, R para reiniciar y ESC para salir.
+
+Detalles técnicos y archivos: `docs/PROPS_0_5_3.md`.
+
+> Esta versión fue preparada desde el ZIP 0.5.2, no desde la rama actual de `Klonoh/Deadbeat`, porque la consulta de GitHub no devolvió el contenido. No reemplaces cambios más recientes del equipo sin comparar primero.
+
+---
+
 ## Actualización 0.5.2: texturas ancladas al mundo
 Se eliminó la modificación de UV en función de la cámara. El suelo se dibuja
 sobre baldosas fijas de 64 × 64 unidades de mundo. Ver `docs/WORLD_0_5_2_TEXTURE_FIX.md`.

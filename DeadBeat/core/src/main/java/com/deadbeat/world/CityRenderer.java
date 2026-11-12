@@ -42,7 +42,9 @@ public final class CityRenderer implements Disposable {
        "planter","planter_long","bench","bin","lamppost","powerbox",
        "dumpster","dumpster_blue","vending","barrels","crate","pallet",
        "tires","tent","garbage","fence","barrier","concrete_barricade",
-       "roof_unit","paper","graffiti_wall","weeds","puddle","house_front","brick_front",
+       "roof_unit","paper","graffiti_wall","weeds","puddle",
+       "garbage_broken_1","garbage_broken_2","garbage_broken_3",
+       "house_front","brick_front",
        "plaster_front","shop_front","punk_shop","shutter_front",
        "garage_front","warehouse_front"
     };
@@ -83,7 +85,9 @@ public final class CityRenderer implements Disposable {
             for(int n=0;n<block.decorationCount();n++) {
                 Decoration d=block.decoration(n);
                 if(visible(d.x,d.y,d.width,d.height,left,bottom,w,h))
-                    drawDecoration(batch,d);
+                    drawDecoration(batch,d,
+                            map.isGarbageBroken(block.blockX,block.blockY,n),
+                            map.brokenGarbageVariant(block.blockX,block.blockY,n));
             }
         }
         for(int j=j0;j<=j1;j++)for(int i=i0;i<=i1;i++) {
@@ -290,10 +294,10 @@ public final class CityRenderer implements Disposable {
         if(o.style%4==0) sprite(b,"graffiti_wall",x+w*.57f,y+4,w*.31f,45);
     }
 
-    private void drawDecoration(SpriteBatch b,Decoration d) {
+    private void drawDecoration(SpriteBatch b,Decoration d,boolean broken,int variant) {
         String name;
         switch(d.kind) {
-          case TRASH:name="garbage";break;
+          case TRASH:name=broken?"garbage_broken_"+(variant+1):"garbage";break;
           case PAPER:name="paper";break;
           case GRAFFITI:name="graffiti_wall";break;
           case BENCH:name="bench";break;

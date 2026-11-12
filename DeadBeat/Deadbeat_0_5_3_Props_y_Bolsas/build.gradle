@@ -1,8 +1,0 @@
-allprojects {
-    group = 'com.deadbeat'
-    version = '0.5.0'
-
-    repositories {
-        mavenCentral()
-    }
-}
