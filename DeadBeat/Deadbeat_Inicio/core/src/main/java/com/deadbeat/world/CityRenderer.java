@@ -8,7 +8,7 @@ import com.badlogic.gdx.utils.Disposable;
 import com.deadbeat.world.CityMap.CityBlock;
 import com.deadbeat.world.CityMap.Obstacle;
 
-/** Only paints the camera-visible part of the procedurally generated city. */
+
 public final class CityRenderer implements Disposable {
     private static final int TILE = CityMap.TILE_SIZE;
     private static final int BLOCK = CityMap.BLOCK_SIZE;
@@ -29,7 +29,7 @@ public final class CityRenderer implements Disposable {
         tiles = TextureRegion.split(tilesTexture, TILE, TILE)[0];
     }
 
-    /** Render only tiles and props overlapping the current visible camera rectangle. */
+
     public void draw(SpriteBatch batch, float left, float bottom,
                      float viewWidth, float viewHeight) {
         int tx0 = Math.max(0, (int) Math.floor(left / TILE) - 1);
@@ -54,7 +54,7 @@ public final class CityRenderer implements Disposable {
                 }
                 batch.setColor(1f, 1f, 1f, 1f);
                 batch.draw(tiles[id], tx * (float) TILE, ty * (float) TILE);
-                // Deterministic tiny street debris; not collidable.
+
                 if ((hash & 127) == 5 && id <= 1) {
                     rect(batch, tx * (float) TILE + 13f, ty * (float) TILE + 19f,
                             6f, 3f, 0.50f, 0.34f, 0.40f);
@@ -73,7 +73,7 @@ public final class CityRenderer implements Disposable {
                 drawRoadPaint(batch, bx, by);
             }
         }
-        // Obstacles over road lines, debris and ground; game player goes over the map.
+
         for (int by = by0; by <= by1; by++) {
             for (int bx = bx0; bx <= bx1; bx++) {
                 CityBlock block = map.getBlock(bx, by);
@@ -98,19 +98,19 @@ public final class CityRenderer implements Disposable {
     private void drawRoadPaint(SpriteBatch batch, int bx, int by) {
         float px = bx * (float) BLOCK;
         float py = by * (float) BLOCK;
-        // Worn yellow lane markings, spaced across long road stretches.
+
         for (int i = 0; i < 4; i++) {
             float d = 180f + 85f * i;
             rect(batch, px + 62f, py + d, 4f, 32f, 0.60f, 0.51f, 0.28f);
             rect(batch, px + d, py + 62f, 32f, 4f, 0.60f, 0.51f, 0.28f);
         }
-        // Two crosswalks bordering the road intersection; visual-only.
+
         for (int i = 0; i < 7; i++) {
             float k = 8f + i * 17f;
             rect(batch, px + k, py + 140f, 9f, 17f, 0.69f, 0.67f, 0.61f);
             rect(batch, px + 140f, py + k, 17f, 9f, 0.69f, 0.67f, 0.61f);
         }
-        // Streetlamp footprints at a few junction corners.
+
         rect(batch, px + 163f, py + 163f, 7f, 7f, 0.22f, 0.23f, 0.28f);
         rect(batch, px + 164f, py + 165f, 3f, 3f, 0.75f, 0.26f, 0.52f);
     }
@@ -118,11 +118,11 @@ public final class CityRenderer implements Disposable {
     private void drawBuilding(SpriteBatch batch, Obstacle b) {
         float x = b.x, y = b.y, w = b.width, h = b.height;
         float tint = b.style * 0.014f;
-        rect(batch, x + 7f, y - 10f, w, h, 0.09f, 0.08f, 0.12f); // deep shadow
+        rect(batch, x + 7f, y - 10f, w, h, 0.09f, 0.08f, 0.12f); 
         rect(batch, x - 4f, y - 6f, w + 8f, h + 10f,
-                0.17f + tint, 0.16f, 0.22f + tint); // bottom wall
+                0.17f + tint, 0.16f, 0.22f + tint); 
         rect(batch, x - 4f, y - 6f, w + 8f, 7f, 0.12f, 0.13f, 0.16f);
-        // Window bands and an abandoned metal entrance; rooftop means solid obstacle.
+
         for (int i = 0; i < 3; i++) {
             float wx = x + 13f + 31f * i;
             if (wx + 16f < x + w - 6f) {
@@ -130,13 +130,13 @@ public final class CityRenderer implements Disposable {
                         0.21f, (i == b.style % 3 ? 0.61f : 0.28f), 0.50f);
             }
         }
-        // Brick silhouette / roof.
+
         rect(batch, x, y + 4f, w, h - 5f,
                 0.22f + tint, 0.22f + tint / 2f, 0.29f + tint);
         rect(batch, x + 6f, y + 10f, w - 12f, h - 18f,
                 0.13f + tint, 0.15f, 0.20f + tint);
         rect(batch, x + 6f, y + h - 12f, w - 12f, 3f, 0.32f, 0.25f, 0.34f);
-        // Rooftop AC unit, fan, and a neon-edged graffiti tag.
+
         rect(batch, x + 18f, y + h - 42f, 31f, 23f, 0.33f, 0.34f, 0.38f);
         rect(batch, x + 22f, y + h - 38f, 23f, 15f, 0.14f, 0.16f, 0.19f);
         rect(batch, x + 29f, y + h - 38f, 7f, 15f, 0.29f, 0.31f, 0.33f);
@@ -144,7 +144,7 @@ public final class CityRenderer implements Disposable {
                 b.style % 2 == 0 ? 0.75f : 0.22f,
                 b.style % 2 == 0 ? 0.19f : 0.63f, 0.49f);
         rect(batch, x + 24f, y + 18f, 24f, 3f, 0.66f, 0.57f, 0.24f);
-        // Small vent gives scale; all details remain purely decorative.
+
         rect(batch, x + w - 32f, y + 21f, 19f, 17f, 0.29f, 0.30f, 0.35f);
         for (int k = 0; k < 3; k++) {
             rect(batch, x + w - 28f, y + 24f + k * 4f, 11f, 1f,

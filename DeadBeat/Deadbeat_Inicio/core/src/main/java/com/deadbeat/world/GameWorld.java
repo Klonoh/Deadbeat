@@ -8,7 +8,7 @@ import com.badlogic.gdx.utils.Disposable;
 import com.deadbeat.entities.Player;
 import com.deadbeat.graphics.PlayerSpriteRenderer;
 
-/** Simulation coordinator, independent from camera placement and screen HUD. */
+
 public final class GameWorld implements Disposable {
     private final Texture pixel;
     private final CityMap cityMap;
