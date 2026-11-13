@@ -13,6 +13,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
+import com.deadbeat.audio.SoundtrackPlayer;
 import com.deadbeat.entities.Player;
 import com.deadbeat.world.CityMap;
 import com.deadbeat.world.GameWorld;
@@ -32,14 +33,22 @@ public final class GameScreen extends ScreenAdapter {
     private static final int MASK_HEIGHT = 49;
 
     private static final float MENU_X = 255f;
-    private static final float MENU_Y = 64f;
+    private static final float MENU_Y = 40f;
     private static final float MENU_WIDTH = 450f;
-    private static final float MENU_HEIGHT = 412f;
+    private static final float MENU_HEIGHT = 460f;
     private static final float BUTTON_X = MENU_X + 77f;
     private static final float BUTTON_WIDTH = MENU_WIDTH - 154f;
     private static final float BUTTON_HEIGHT = 58f;
-    private static final float CONTINUE_Y = MENU_Y + 113f;
-    private static final float EXIT_Y = MENU_Y + 43f;
+    private static final float CONTINUE_Y = MENU_Y + 108f;
+    private static final float EXIT_Y = MENU_Y + 31f;
+
+    private static final float SPEAKER_X = MENU_X + 74f;
+    private static final float SPEAKER_Y = MENU_Y + 197f;
+    private static final float SPEAKER_SIZE = 42f;
+    private static final float VOLUME_X = MENU_X + 139f;
+    private static final float VOLUME_Y = MENU_Y + 212f;
+    private static final float VOLUME_WIDTH = 233f;
+    private static final float VOLUME_HEIGHT = 11f;
 
     private final FitViewport worldViewport;
     private final FitViewport hudViewport;
@@ -53,8 +62,10 @@ public final class GameScreen extends ScreenAdapter {
     private final Texture guitarMask;
     private final Texture guitarOutline;
     private final GameWorld world;
+    private final SoundtrackPlayer soundtrack;
 
     private boolean paused;
+    private boolean draggingVolume;
     private int selectedButton; // 0 = continuar, 1 = salir
     // Monotonic wall-clock time includes pauses and time spent outside the game window.
     private long runStartedAtNanos;
@@ -87,6 +98,7 @@ public final class GameScreen extends ScreenAdapter {
         }
 
         world = new GameWorld();
+        soundtrack = new SoundtrackPlayer();
         paused = false;
         selectedButton = 0;
         runStartedAtNanos = System.nanoTime();
@@ -95,9 +107,12 @@ public final class GameScreen extends ScreenAdapter {
 
     @Override
     public void render(float delta) {
+        // La lista de música continúa también mientras la simulación está pausada.
+        soundtrack.update();
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             paused = !paused;
             selectedButton = 0;
+            draggingVolume = false;
         }
 
         if (paused) {
@@ -143,19 +158,45 @@ public final class GameScreen extends ScreenAdapter {
                 || Gdx.input.isKeyJustPressed(Input.Keys.S)) {
             selectedButton = 1 - selectedButton;
         }
+        // Accesos alternativos al mouse para controlar volumen y muteo.
+        if (Gdx.input.isKeyJustPressed(Input.Keys.M)) soundtrack.toggleMute();
+        if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT))
+            soundtrack.setVolume(soundtrack.getVolume() - 0.05f);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT))
+            soundtrack.setVolume(soundtrack.getVolume() + 0.05f);
 
-        // Mouse coordinates are converted through the HUD viewport, including letterbox bars.
+        // Unproject respeta el viewport si la ventana tiene barras laterales.
         hudViewport.unproject(mouseInHud.set(Gdx.input.getX(), Gdx.input.getY()));
-        final int hovered = buttonUnderMouse(mouseInHud.x, mouseInHud.y);
-        if (hovered >= 0) {
-            selectedButton = hovered;
+        float mx = mouseInHud.x;
+        float my = mouseInHud.y;
+        final int hovered = buttonUnderMouse(mx, my);
+        if (hovered >= 0) selectedButton = hovered;
+
+        if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
+            if (inside(mx, my, SPEAKER_X, SPEAKER_Y, SPEAKER_SIZE, SPEAKER_SIZE)) {
+                soundtrack.toggleMute();
+            } else if (inside(mx, my, VOLUME_X - 10f, VOLUME_Y - 14f,
+                    VOLUME_WIDTH + 20f, VOLUME_HEIGHT + 28f)) {
+                draggingVolume = true;
+                changeVolumeAt(mx);
+            } else if (hovered >= 0) {
+                activateButton(hovered);
+            }
         }
+        if (draggingVolume && Gdx.input.isButtonPressed(Input.Buttons.LEFT)) {
+            changeVolumeAt(mx);
+        } else if (!Gdx.input.isButtonPressed(Input.Buttons.LEFT)) {
+            draggingVolume = false;
+        }
+
         if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)
                 || Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             activateButton(selectedButton);
-        } else if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT) && hovered >= 0) {
-            activateButton(hovered);
         }
+    }
+
+    private void changeVolumeAt(float mouseX) {
+        soundtrack.setVolume(clamp((mouseX - VOLUME_X) / VOLUME_WIDTH, 0f, 1f));
     }
 
     private int buttonUnderMouse(float x, float y) {
@@ -240,18 +281,61 @@ public final class GameScreen extends ScreenAdapter {
         }
 
         centered(titleFont, "DEADBEAT", VIEW_WIDTH / 2f,
-                MENU_Y + MENU_HEIGHT - 34f, 1f, .86f, .74f, 1f);
+                MENU_Y + MENU_HEIGHT - 36f, 1f, .86f, .74f, 1f);
         centered(menuFont, "// PAUSA //", VIEW_WIDTH / 2f,
-                MENU_Y + MENU_HEIGHT - 83f, 1f, .87f, .69f, 1f);
+                MENU_Y + MENU_HEIGHT - 85f, 1f, .87f, .69f, 1f);
         centered(smallFont, "TIEMPO TOTAL DE RUN", VIEW_WIDTH / 2f,
-                MENU_Y + 260f, .84f, .71f, .66f, 1f);
+                MENU_Y + 327f, .84f, .71f, .66f, 1f);
         centered(menuFont, elapsedAsClock(), VIEW_WIDTH / 2f,
-                MENU_Y + 214f, 1f, .90f, .81f, 1f);
-        // Header dividers / hazard-tape accent.
-        block(MENU_X + 74f, MENU_Y + 194f, MENU_WIDTH - 148f, 2f,
+                MENU_Y + 290f, 1f, .90f, .81f, 1f);
+        block(MENU_X + 74f, MENU_Y + 269f, MENU_WIDTH - 148f, 2f,
                 .64f, .19f, .25f, .9f);
+        centered(smallFont, "MUSICA  " + Math.round(soundtrack.getVolume() * 100f) + "%",
+                VIEW_WIDTH / 2f, MENU_Y + 245f, .95f, .81f, .72f, 1f);
+        drawVolumeControl();
         drawPauseButton(CONTINUE_Y, "CONTINUAR", selectedButton == 0);
         drawPauseButton(EXIT_Y, "SALIR", selectedButton == 1);
+    }
+
+    /** Bocina interactiva y volumen: conserva el nivel elegido al mutear. */
+    private void drawVolumeControl() {
+        boolean muted = soundtrack.isMuted();
+        // Botón metálico con acento rojo cuando la música está silenciada.
+        block(SPEAKER_X + 3f, SPEAKER_Y - 3f, SPEAKER_SIZE, SPEAKER_SIZE,
+                .05f, .04f, .06f, .92f);
+        block(SPEAKER_X, SPEAKER_Y, SPEAKER_SIZE, SPEAKER_SIZE,
+                muted ? .46f : .23f, .14f, .18f, 1f);
+        block(SPEAKER_X + 3f, SPEAKER_Y + 3f, SPEAKER_SIZE - 6f, SPEAKER_SIZE - 6f,
+                .16f, .14f, .16f, 1f);
+        // Bocina en pixel-art: caja, cono y ondas (o cruz de mute).
+        float sx = SPEAKER_X + 9f;
+        float sy = SPEAKER_Y + 11f;
+        block(sx, sy + 6f, 9f, 10f, .94f, .87f, .76f, 1f);
+        block(sx + 9f, sy + 3f, 6f, 16f, .94f, .87f, .76f, 1f);
+        block(sx + 14f, sy, 3f, 22f, .94f, .87f, .76f, 1f);
+        if (muted) {
+            // Cruz roja en la zona de salida del altavoz.
+            for (int i = 0; i < 5; i++) {
+                block(sx + 20f + i * 2f, sy + 6f + i * 2f, 3f, 3f, .95f, .18f, .25f, 1f);
+                block(sx + 20f + i * 2f, sy + 14f - i * 2f, 3f, 3f, .95f, .18f, .25f, 1f);
+            }
+        } else {
+            block(sx + 22f, sy + 4f, 3f, 14f, .97f, .68f, .40f, 1f);
+            block(sx + 27f, sy + 1f, 3f, 20f, .97f, .68f, .40f, 1f);
+        }
+
+        block(VOLUME_X - 5f, VOLUME_Y - 8f, VOLUME_WIDTH + 10f, VOLUME_HEIGHT + 16f,
+                .09f, .075f, .09f, 1f);
+        block(VOLUME_X, VOLUME_Y, VOLUME_WIDTH, VOLUME_HEIGHT,
+                .31f, .28f, .30f, 1f);
+        float fraction = soundtrack.getVolume();
+        block(VOLUME_X, VOLUME_Y, VOLUME_WIDTH * fraction, VOLUME_HEIGHT,
+                muted ? .48f : .90f, muted ? .34f : .12f, .23f, 1f);
+        float knobX = VOLUME_X + VOLUME_WIDTH * fraction;
+        block(knobX - 6f, VOLUME_Y - 7f, 12f, VOLUME_HEIGHT + 14f,
+                .10f, .08f, .12f, 1f);
+        block(knobX - 4f, VOLUME_Y - 5f, 8f, VOLUME_HEIGHT + 10f,
+                1f, .76f, .53f, 1f);
     }
 
     private void drawPauseButton(float y, String label, boolean selected) {
@@ -309,6 +393,7 @@ public final class GameScreen extends ScreenAdapter {
 
     @Override
     public void dispose() {
+        soundtrack.dispose();
         world.dispose();
         titleFont.dispose();
         menuFont.dispose();
