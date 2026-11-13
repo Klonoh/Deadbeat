@@ -2,6 +2,7 @@ package com.deadbeat.progression;
 
 import com.deadbeat.entities.Player;
 import com.deadbeat.weapons.ElectricGuitar;
+import com.deadbeat.weapons.Drumsticks;
 import com.deadbeat.weapons.Weapon;
 
 public enum Upgrade {
@@ -33,7 +34,7 @@ public enum Upgrade {
             default:
                 boolean guitar = this == GUITAR_DAMAGE || this == GUITAR_RATE;
                 for (Weapon weapon : player.getWeapons()) {
-                    if (guitar != (weapon instanceof ElectricGuitar)) {
+                    if (!(guitar ? weapon instanceof ElectricGuitar : weapon instanceof Drumsticks)) {
                         continue;
                     }
                     if (this == GUITAR_DAMAGE || this == DRUM_DAMAGE) {
