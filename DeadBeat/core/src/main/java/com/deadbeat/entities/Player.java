@@ -46,6 +46,35 @@ public final class Player implements Damageable {
     private boolean moving;
     private float walkTime;
     private final List<Weapon> weapons = new ArrayList<>();
+    private int experience;
+    private int level;
+
+    /** devuelve los niveles ganados y conserva la experiencia sobrante. */
+    public int addExperience(int amount) {
+        if (amount <= 0) {
+            return 0;
+        }
+        experience += amount;
+        int gained = 0;
+        while (experience >= getExperienceToNextLevel()) {
+            experience -= getExperienceToNextLevel();
+            level++;
+            gained++;
+        }
+        return gained;
+    }
+
+    public int getExperience() {
+        return experience;
+    }
+
+    public int getLevel() {
+        return level;
+    }
+
+    public int getExperienceToNextLevel() {
+        return 8 + 4 * (level - 1);
+    }
 
     public List<Weapon> getWeapons() {
         return Collections.unmodifiableList(weapons);
@@ -203,6 +232,8 @@ public final class Player implements Damageable {
 
     /** Resets all mutable state, including position and temporary immunity. */
     public void reset() {
+        experience = 0;
+        level = 1;
         weapons.clear();
         weapons.add(new ElectricGuitar());
         weapons.add(new Drumsticks());
