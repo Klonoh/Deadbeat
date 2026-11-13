@@ -36,13 +36,14 @@ public final class WaveBuilder {
         return new Wave(duration, normal, fast, tank);
     }
 
+    /** Cinco oleadas de 30 s, con más enemigos y una progresión más intensa. */
     public static Wave[] campaign(float duration) {
         return new Wave[] {
-            new WaveBuilder().duration(duration).normal(14).build(),
-            new WaveBuilder().duration(duration).normal(16).fast(4).build(),
-            new WaveBuilder().duration(duration).normal(20).fast(6).tank(1).build(),
-            new WaveBuilder().duration(duration).normal(24).fast(10).tank(3).build(),
-            new WaveBuilder().duration(duration).normal(28).fast(14).tank(5).build()
+            new WaveBuilder().duration(duration).normal(24).build(),
+            new WaveBuilder().duration(duration).normal(26).fast(8).build(),
+            new WaveBuilder().duration(duration).normal(36).fast(10).tank(2).build(),
+            new WaveBuilder().duration(duration).normal(44).fast(16).tank(4).build(),
+            new WaveBuilder().duration(duration).normal(54).fast(20).tank(8).build()
         };
     }
 }

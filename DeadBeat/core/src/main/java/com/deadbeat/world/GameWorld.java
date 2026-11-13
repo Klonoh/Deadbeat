@@ -23,7 +23,8 @@ import com.deadbeat.progression.WaveBuilder;
 
 /** integra el mapa de la ciudad con las entidades de combate. */
 public final class GameWorld implements Disposable {
-    private static final int MAX_ZOMBIES = 80;
+    // Mayor densidad simultánea sin dejar colas de spawn demasiado largas.
+    private static final int MAX_ZOMBIES = 110;
     private final Wave[] waves;
     private final Random random = new Random();
     private int waveIndex;
