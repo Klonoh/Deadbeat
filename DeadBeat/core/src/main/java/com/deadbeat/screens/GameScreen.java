@@ -3,56 +3,118 @@ package com.deadbeat.screens;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.ScreenAdapter;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.deadbeat.entities.Player;
 import com.deadbeat.world.CityMap;
 import com.deadbeat.world.GameWorld;
 
-/** World-facing camera and independent fixed-screen HUD. */
+/** Cámara de la ciudad y HUD de guitarra con menú de pausa superpuesto. */
 public final class GameScreen extends ScreenAdapter {
     public static final float VIEW_WIDTH = 960f;
     public static final float VIEW_HEIGHT = 540f;
 
+    // Media guitarra cortada a lo largo y apoyada en el borde superior.
+    // La caja/cuerpo queda en la esquina izquierda y el mastil apunta a la derecha.
+    private static final float GUITAR_X = 0f;
+    private static final float GUITAR_WIDTH = 330f;
+    private static final float GUITAR_HEIGHT = 78f;
+    private static final float GUITAR_Y = VIEW_HEIGHT - GUITAR_HEIGHT;
+    private static final int MASK_WIDTH = 206;
+    private static final int MASK_HEIGHT = 49;
+
+    private static final float MENU_X = 255f;
+    private static final float MENU_Y = 64f;
+    private static final float MENU_WIDTH = 450f;
+    private static final float MENU_HEIGHT = 412f;
+    private static final float BUTTON_X = MENU_X + 77f;
+    private static final float BUTTON_WIDTH = MENU_WIDTH - 154f;
+    private static final float BUTTON_HEIGHT = 58f;
+    private static final float CONTINUE_Y = MENU_Y + 113f;
+    private static final float EXIT_Y = MENU_Y + 43f;
+
     private final FitViewport worldViewport;
     private final FitViewport hudViewport;
     private final SpriteBatch batch;
-    private final BitmapFont font;
-    private final Texture hudPixel;
+    private final BitmapFont titleFont;
+    private final BitmapFont menuFont;
+    private final BitmapFont smallFont;
+    private final GlyphLayout glyph = new GlyphLayout();
+    private final Vector2 mouseInHud = new Vector2();
+    private final Texture pixel;
+    private final Texture guitarMask;
+    private final Texture guitarOutline;
     private final GameWorld world;
+
+    private boolean paused;
+    private int selectedButton; // 0 = continuar, 1 = salir
+    // Monotonic wall-clock time includes pauses and time spent outside the game window.
+    private long runStartedAtNanos;
 
     public GameScreen() {
         worldViewport = new FitViewport(VIEW_WIDTH, VIEW_HEIGHT);
         hudViewport = new FitViewport(VIEW_WIDTH, VIEW_HEIGHT, new OrthographicCamera());
         batch = new SpriteBatch();
-        font = new BitmapFont();
-        font.setColor(Color.WHITE);
-        Pixmap p = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
-        p.setColor(Color.WHITE);
-        p.fill();
-        hudPixel = new Texture(p);
-        p.dispose();
+
+        titleFont = new BitmapFont();
+        titleFont.getData().setScale(3.0f);
+        menuFont = new BitmapFont();
+        menuFont.getData().setScale(1.7f);
+        smallFont = new BitmapFont();
+        smallFont.getData().setScale(1.15f);
+
+        Pixmap white = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        white.setColor(1f, 1f, 1f, 1f);
+        white.fill();
+        pixel = new Texture(white);
+        white.dispose();
+
+        guitarMask = new Texture(Gdx.files.internal("hud/guitar_health_mask.png"));
+        guitarOutline = new Texture(Gdx.files.internal("hud/guitar_health_outline.png"));
+        guitarMask.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+        guitarOutline.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+        if (guitarMask.getWidth() != MASK_WIDTH || guitarMask.getHeight() != MASK_HEIGHT
+                || guitarOutline.getWidth() != MASK_WIDTH || guitarOutline.getHeight() != MASK_HEIGHT) {
+            throw new IllegalStateException("Los sprites de media guitarra deben medir 206x49 pixeles.");
+        }
+
         world = new GameWorld();
+        paused = false;
+        selectedButton = 0;
+        runStartedAtNanos = System.nanoTime();
         followPlayer();
     }
 
-    @Override public void render(float delta) {
+    @Override
+    public void render(float delta) {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            Gdx.app.exit();
-            return;
+            paused = !paused;
+            selectedButton = 0;
         }
-        if (Gdx.input.isKeyJustPressed(Input.Keys.R)) world.reset();
-        if (Gdx.input.isKeyJustPressed(Input.Keys.H)) world.getPlayer().takeDamage(20f);
-        // Avoid a large teleport after minimizing or changing windows.
-        float safeDelta = Math.max(0f, Math.min(delta, 0.05f));
-        world.update(safeDelta);
-        followPlayer();
+
+        if (paused) {
+            handlePauseMenuInput();
+        } else {
+            if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
+                world.reset();
+                runStartedAtNanos = System.nanoTime();
+            }
+            if (Gdx.input.isKeyJustPressed(Input.Keys.H)) {
+                world.getPlayer().takeDamage(20f);
+            }
+            // Se detienen zombis, proyectiles, armas y oleadas al pausar.
+            float safeDelta = Math.max(0f, Math.min(delta, 0.05f));
+            world.update(safeDelta);
+            followPlayer();
+        }
 
         ScreenUtils.clear(0.05f, 0.055f, 0.07f, 1f);
         worldViewport.apply();
@@ -63,84 +125,197 @@ public final class GameScreen extends ScreenAdapter {
         world.draw(batch, left, bottom, VIEW_WIDTH, VIEW_HEIGHT);
         batch.end();
 
-        // Apply the fixed HUD viewport AFTER the camera projection so its text
-        // does not travel with the player through the map.
         hudViewport.apply();
         batch.setProjectionMatrix(hudViewport.getCamera().combined);
         batch.begin();
-        drawHud(world.getPlayer());
+        drawGuitarHealth(world.getPlayer());
+        if (paused) {
+            drawPauseMenu();
+        }
+        batch.setColor(1f, 1f, 1f, 1f);
         batch.end();
+    }
+
+    private void handlePauseMenuInput() {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.UP)
+                || Gdx.input.isKeyJustPressed(Input.Keys.W)
+                || Gdx.input.isKeyJustPressed(Input.Keys.DOWN)
+                || Gdx.input.isKeyJustPressed(Input.Keys.S)) {
+            selectedButton = 1 - selectedButton;
+        }
+
+        // Mouse coordinates are converted through the HUD viewport, including letterbox bars.
+        hudViewport.unproject(mouseInHud.set(Gdx.input.getX(), Gdx.input.getY()));
+        final int hovered = buttonUnderMouse(mouseInHud.x, mouseInHud.y);
+        if (hovered >= 0) {
+            selectedButton = hovered;
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)
+                || Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+            activateButton(selectedButton);
+        } else if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT) && hovered >= 0) {
+            activateButton(hovered);
+        }
+    }
+
+    private int buttonUnderMouse(float x, float y) {
+        if (inside(x, y, BUTTON_X, CONTINUE_Y, BUTTON_WIDTH, BUTTON_HEIGHT)) return 0;
+        if (inside(x, y, BUTTON_X, EXIT_Y, BUTTON_WIDTH, BUTTON_HEIGHT)) return 1;
+        return -1;
+    }
+
+    private static boolean inside(float x, float y, float left, float bottom, float w, float h) {
+        return x >= left && x <= left + w && y >= bottom && y <= bottom + h;
+    }
+
+    private void activateButton(int button) {
+        if (button == 0) {
+            paused = false;
+        } else {
+            Gdx.app.exit();
+        }
     }
 
     private void followPlayer() {
         Player p = world.getPlayer();
-        // Clamp only at the far map limits, leaving the player in the center of
-        // the screen everywhere else (far beyond normal testing distance).
-        float cx = clamp(p.getX(), VIEW_WIDTH / 2f,
-                CityMap.WORLD_SIZE - VIEW_WIDTH / 2f);
-        float cy = clamp(p.getY(), VIEW_HEIGHT / 2f,
-                CityMap.WORLD_SIZE - VIEW_HEIGHT / 2f);
-        // Pixel-snap the camera. Subpixel positions + Nearest filtering made
-        // stationary scenery shimmer and the player look as if it jumped.
+        float cx = clamp(p.getX(), VIEW_WIDTH / 2f, CityMap.WORLD_SIZE - VIEW_WIDTH / 2f);
+        float cy = clamp(p.getY(), VIEW_HEIGHT / 2f, CityMap.WORLD_SIZE - VIEW_HEIGHT / 2f);
         worldViewport.getCamera().position.set(Math.round(cx), Math.round(cy), 0f);
         worldViewport.getCamera().update();
     }
 
-    private void drawHud(Player player) {
-        panel(11f, VIEW_HEIGHT - 70f, 525f, 59f);
-        font.setColor(Color.WHITE);
-        font.draw(batch, "DEADBEAT  |  CIUDAD PUNK 0.5.3", 22f, VIEW_HEIGHT - 31f);
-        font.draw(batch, "WASD / flechas: caminar  |  H: dano  |  R: reiniciar  |  ESC: salir",
-                22f, VIEW_HEIGHT - 54f);
-        panel(11f, 10f, 822f, 49f);
-        font.draw(batch, "VIDA: " + (int) player.getHealth() + "/"
-                + (int) player.getMaxHealth(), 22f, 41f);
-        font.draw(batch, "TIEMPO: " + (int) world.getElapsedTime() + " s", 153f, 41f);
-        font.draw(batch, "POS: " + (int) (player.getX() - CityMap.SPAWN)
-                + ", " + (int) (player.getY() - CityMap.SPAWN), 287f, 41f);
-        String zone;
-        switch (world.getCityMap().districtAt(player.getX(), player.getY())) {
-            case SHOPS: zone = "COMERCIO"; break;
-            case RESIDENTIAL: zone = "RESIDENCIAL"; break;
-            case INDUSTRIAL: zone = "INDUSTRIAL"; break;
-            case PARKING: zone = "ESTACIONAMIENTOS"; break;
-            case CAMP: zone = "CAMPAMENTO"; break;
-            case BACKSTREET: zone = "CALLEJONES"; break;
-            default: zone = "CIUDAD";
+    /**
+     * Media guitarra horizontal: cuerpo en la esquina superior izquierda.
+     * La vida ocupa desde el cuerpo hacia el mastil y retrocede hacia la izquierda
+     * conforme baja la salud. La silueta, la sombra y el contorno nunca se mueven.
+     */
+    private void drawGuitarHealth(Player player) {
+        float ratio = player.getMaxHealth() > 0f
+                ? clamp(player.getHealth() / player.getMaxHealth(), 0f, 1f) : 0f;
+        float x = GUITAR_X;
+        float y = GUITAR_Y;
+
+        batch.setColor(0f, 0f, 0f, 0.45f);
+        batch.draw(guitarMask, x + 3f, y - 4f, GUITAR_WIDTH, GUITAR_HEIGHT);
+        batch.setColor(0.12f, 0.105f, 0.13f, 0.93f);
+        batch.draw(guitarMask, x, y, GUITAR_WIDTH, GUITAR_HEIGHT);
+
+        // El recorte horizontal mantiene la parte izquierda de la silueta fija.
+        int remainingPixels = Math.min(MASK_WIDTH,
+                Math.max(0, Math.round(MASK_WIDTH * ratio)));
+        if (remainingPixels > 0) {
+            TextureRegion redPart = new TextureRegion(guitarMask,
+                    0, 0, remainingPixels, MASK_HEIGHT);
+            batch.setColor(0.89f, 0.09f, 0.17f, 1f);
+            batch.draw(redPart, x, y,
+                    GUITAR_WIDTH * remainingPixels / MASK_WIDTH, GUITAR_HEIGHT);
         }
-        font.draw(batch, "ZONA: " + zone, 432f, 41f);
-        font.draw(batch, "BOLSAS ROTAS: " + world.getCityMap().brokenGarbageCount(), 617f, 41f);
-        if (player.isInvulnerable()) {
-            font.draw(batch, "INVULNERABLE", 22f, 24f);
-        } else if (!player.isAlive()) {
-            font.draw(batch, "SIN VIDA - R PARA REINICIAR", 22f, 24f);
+        batch.setColor(1f, 1f, 1f, 1f);
+        batch.draw(guitarOutline, x, y, GUITAR_WIDTH, GUITAR_HEIGHT);
+    }
+
+    private void drawPauseMenu() {
+        // World-facing city freezes underneath this dark overlay.
+        block(0f, 0f, VIEW_WIDTH, VIEW_HEIGHT, .035f, .03f, .038f, .80f);
+        // Asymmetric aged-metal backing, with a double border and graffiti streaks.
+        block(MENU_X + 7f, MENU_Y - 7f, MENU_WIDTH, MENU_HEIGHT,
+                .04f, .025f, .035f, .96f);
+        block(MENU_X, MENU_Y, MENU_WIDTH, MENU_HEIGHT,
+                .105f, .098f, .115f, .97f);
+        block(MENU_X + 5f, MENU_Y + 5f, MENU_WIDTH - 10f, MENU_HEIGHT - 10f,
+                .135f, .125f, .135f, .97f);
+        block(MENU_X + 8f, MENU_Y + MENU_HEIGHT - 93f, MENU_WIDTH - 16f, 83f,
+                .24f, .075f, .11f, 1f);
+        block(MENU_X + 8f, MENU_Y + MENU_HEIGHT - 105f, MENU_WIDTH - 16f, 6f,
+                .93f, .33f, .15f, 1f);
+        // Vertical oxidized rivets and torn diagonal scratches.
+        for (int i = 0; i < 8; i++) {
+            float px = MENU_X + 13 + i * 59f;
+            block(px, MENU_Y + 9f, 5f, 5f, .64f, .53f, .44f, 1f);
+            block(px, MENU_Y + MENU_HEIGHT - 20f, 5f, 5f, .64f, .53f, .44f, 1f);
+        }
+        for (int i = 0; i < 7; i++) {
+            block(MENU_X + 28f + i * 28f, MENU_Y + MENU_HEIGHT - 125f - (i % 2) * 5f,
+                    17f, 3f, .47f, .16f, .22f, 0.65f);
+        }
+
+        centered(titleFont, "DEADBEAT", VIEW_WIDTH / 2f,
+                MENU_Y + MENU_HEIGHT - 34f, 1f, .86f, .74f, 1f);
+        centered(menuFont, "// PAUSA //", VIEW_WIDTH / 2f,
+                MENU_Y + MENU_HEIGHT - 83f, 1f, .87f, .69f, 1f);
+        centered(smallFont, "TIEMPO TOTAL DE RUN", VIEW_WIDTH / 2f,
+                MENU_Y + 260f, .84f, .71f, .66f, 1f);
+        centered(menuFont, elapsedAsClock(), VIEW_WIDTH / 2f,
+                MENU_Y + 214f, 1f, .90f, .81f, 1f);
+        // Header dividers / hazard-tape accent.
+        block(MENU_X + 74f, MENU_Y + 194f, MENU_WIDTH - 148f, 2f,
+                .64f, .19f, .25f, .9f);
+        drawPauseButton(CONTINUE_Y, "CONTINUAR", selectedButton == 0);
+        drawPauseButton(EXIT_Y, "SALIR", selectedButton == 1);
+    }
+
+    private void drawPauseButton(float y, String label, boolean selected) {
+        block(BUTTON_X + 5f, y - 5f, BUTTON_WIDTH, BUTTON_HEIGHT,
+                .055f, .04f, .06f, .88f);
+        if (selected) {
+            block(BUTTON_X, y, BUTTON_WIDTH, BUTTON_HEIGHT,
+                    .50f, .12f, .23f, 1f);
+            block(BUTTON_X, y, 7f, BUTTON_HEIGHT, 1f, .41f, .18f, 1f);
+            block(BUTTON_X + BUTTON_WIDTH - 7f, y, 7f, BUTTON_HEIGHT,
+                    1f, .41f, .18f, 1f);
         } else {
-            font.draw(batch, "Pasa sobre las bolsas para romperlas. Las vallas bloquean el paso.", 22f, 24f);
+            block(BUTTON_X, y, BUTTON_WIDTH, BUTTON_HEIGHT,
+                    .23f, .20f, .23f, 1f);
+            block(BUTTON_X, y, 5f, BUTTON_HEIGHT, .62f, .28f, .32f, 1f);
         }
+        centered(menuFont, label, VIEW_WIDTH / 2f, y + 39f,
+                selected ? 1f : .80f, selected ? .96f : .79f, .76f, 1f);
     }
 
-    private void panel(float x, float y, float w, float h) {
-        batch.setColor(0.07f, 0.075f, 0.10f, 0.88f);
-        batch.draw(hudPixel, x, y, w, h);
-        batch.setColor(0.72f, 0.20f, 0.43f, 1f);
-        batch.draw(hudPixel, x, y, 4f, h);
-        batch.setColor(Color.WHITE);
+    /** Total elapsed real time. It intentionally includes every second spent paused. */
+    private String elapsedAsClock() {
+        long seconds = Math.max(0L, (System.nanoTime() - runStartedAtNanos) / 1_000_000_000L);
+        return two(seconds / 3600) + ":" + two((seconds / 60) % 60) + ":" + two(seconds % 60);
     }
 
-    private static float clamp(float x, float lo, float hi) {
-        return Math.max(lo, Math.min(hi, x));
+    private static String two(long value) {
+        return value < 10 ? "0" + value : Long.toString(value);
     }
 
-    @Override public void resize(int width, int height) {
+    private void centered(BitmapFont font, String text, float centerX, float baseline,
+                          float r, float g, float b, float a) {
+        font.setColor(r, g, b, a);
+        glyph.setText(font, text);
+        font.draw(batch, glyph, centerX - glyph.width / 2f, baseline);
+    }
+
+    private void block(float x, float y, float w, float h,
+                       float r, float g, float b, float a) {
+        batch.setColor(r, g, b, a);
+        batch.draw(pixel, x, y, w, h);
+        batch.setColor(1f, 1f, 1f, 1f);
+    }
+
+    private static float clamp(float v, float lo, float hi) {
+        return Math.max(lo, Math.min(hi, v));
+    }
+
+    @Override
+    public void resize(int width, int height) {
         worldViewport.update(width, height, false);
         hudViewport.update(width, height, true);
         followPlayer();
     }
 
-    @Override public void dispose() {
+    @Override
+    public void dispose() {
         world.dispose();
-        font.dispose();
+        titleFont.dispose();
+        menuFont.dispose();
+        smallFont.dispose();
+        guitarMask.dispose();
+        guitarOutline.dispose();
+        pixel.dispose();
         batch.dispose();
-        hudPixel.dispose();
     }
 }
