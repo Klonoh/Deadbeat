@@ -170,6 +170,13 @@ public final class GameScreen extends ScreenAdapter {
             }
             if (paused) {
                 handlePauseMenuInput();
+            } else if (world.isChoosingUpgrade()) {
+                if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
+                    resetRun();
+                } else {
+                    handleUpgradeInput();
+                }
+                checkRunOutcome();
             } else {
                 handleMusicHudClick();
                 if (Gdx.input.isKeyJustPressed(Input.Keys.R)) resetRun();
@@ -197,13 +204,59 @@ public final class GameScreen extends ScreenAdapter {
         batch.begin();
         drawGuitarHealth(world.getPlayer());
         drawMusicHud();
+        drawExperienceBar();
         if (outcome != RunOutcome.PLAYING) {
             drawResultScreen();
         } else if (paused) {
             drawPauseMenu();
+        } else if (world.isChoosingUpgrade()) {
+            drawUpgradeSelection();
         }
         batch.setColor(1f, 1f, 1f, 1f);
         batch.end();
+    }
+
+    private void drawExperienceBar() {
+        Player player = world.getPlayer();
+        float ratio = clamp((float) player.getExperience()
+                / player.getExperienceToNextLevel(), 0f, 1f);
+        block(0f, 0f, VIEW_WIDTH, 10f, .06f, .08f, .10f, 1f);
+        block(0f, 0f, VIEW_WIDTH * ratio, 8f, .2f, .9f, 1f, 1f);
+        smallFont.setColor(.7f, .95f, 1f, 1f);
+        smallFont.draw(batch, "NIVEL " + player.getLevel() + "  |  XP "
+                + player.getExperience() + "/" + player.getExperienceToNextLevel(), 12f, 29f);
+    }
+
+    private void handleUpgradeInput() {
+        int choice = -1;
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) choice = 0;
+        else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) choice = 1;
+        else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) choice = 2;
+        else if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
+            hudViewport.unproject(mouseInHud.set(Gdx.input.getX(), Gdx.input.getY()));
+            for (int i = 0; i < world.getUpgradeChoices().size(); i++) {
+                if (inside(mouseInHud.x, mouseInHud.y, 230f, 290f - i * 65f, 500f, 50f)) {
+                    choice = i;
+                    break;
+                }
+            }
+        }
+        if (choice >= 0) {
+            world.chooseUpgrade(choice);
+        }
+    }
+
+    private void drawUpgradeSelection() {
+        block(0f, 0f, VIEW_WIDTH, VIEW_HEIGHT, .03f, .03f, .04f, .82f);
+        centered(menuFont, "ELIGE UNA MEJORA", VIEW_WIDTH / 2f, 395f, .2f, .9f, 1f, 1f);
+        centered(smallFont, "Pendientes: " + world.getPendingUpgrades()
+                + "  |  1 / 2 / 3 o clic  |  ESC: pausa", VIEW_WIDTH / 2f, 360f, 1f, 1f, 1f, 1f);
+        for (int i = 0; i < world.getUpgradeChoices().size(); i++) {
+            float y = 290f - i * 65f;
+            block(230f, y, 500f, 50f, .12f, .16f, .19f, 1f);
+            centered(smallFont, (i + 1) + ". " + world.getUpgradeChoices().get(i).getLabel(),
+                    VIEW_WIDTH / 2f, y + 32f, 1f, 1f, 1f, 1f);
+        }
     }
 
     /** La prioridad de derrota evita declarar victoria si el jugador muere al final. */
@@ -219,6 +272,7 @@ public final class GameScreen extends ScreenAdapter {
     private void finishRun(RunOutcome result) {
         if (outcome != RunOutcome.PLAYING) return;
         outcome = result;
+        world.cancelUpgradeSelection();
         finalWave = world.getCurrentWave();
         runEndedAtNanos = System.nanoTime();
         selectedResultButton = 0;

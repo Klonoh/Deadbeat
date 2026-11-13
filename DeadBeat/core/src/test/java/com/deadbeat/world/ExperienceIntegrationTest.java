@@ -66,6 +66,9 @@ public class ExperienceIntegrationTest {
         assertTrue(world.getOrbs().isEmpty());
         assertEquals(4, world.getPlayer().getLevel());
         assertEquals(7, world.getPlayer().getExperience());
+        while (world.isChoosingUpgrade()) {
+            world.chooseUpgrade(0);
+        }
         defeated(world, ZombieType.NORMAL, 100f);
         world.update(0.001f, 0f, 0f);
         assertEquals(1, world.getOrbs().size());

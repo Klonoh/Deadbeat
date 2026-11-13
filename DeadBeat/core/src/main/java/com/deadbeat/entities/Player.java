@@ -64,6 +64,11 @@ public final class Player implements Damageable {
         return gained;
     }
 
+    public void increaseMaxHealth() {
+        maxHealth += 20f;
+        heal(20f);
+    }
+
     public int getExperience() {
         return experience;
     }

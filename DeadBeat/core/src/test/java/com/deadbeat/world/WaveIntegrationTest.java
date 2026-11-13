@@ -10,7 +10,7 @@ import static org.junit.Assert.*;
 public class WaveIntegrationTest {
     @Test
     public void builderPreservesCampaignAndValidatesConfiguration() {
-        int[][] expected = {{14, 0, 0}, {16, 4, 0}, {20, 6, 1}, {24, 10, 3}, {28, 14, 5}};
+        int[][] expected = {{24, 0, 0}, {26, 8, 0}, {36, 10, 2}, {44, 16, 4}, {54, 20, 8}};
         Wave[] waves = WaveBuilder.campaign(30f);
         for (int i = 0; i < waves.length; i++) {
             int[] counts = new int[3];
@@ -21,7 +21,7 @@ public class WaveIntegrationTest {
             assertEquals(30f, waves[i].getDuration(), 0f);
         }
         assertEquals(ZombieType.TANK, waves[4].typeAt(0));
-        assertEquals(ZombieType.FAST, waves[4].typeAt(5));
+        assertEquals(ZombieType.FAST, waves[4].typeAt(8));
         assertThrows(IllegalArgumentException.class, () -> new WaveBuilder().build());
         assertThrows(IllegalArgumentException.class, () -> new WaveBuilder().normal(-1).build());
         assertThrows(IllegalArgumentException.class, () -> new WaveBuilder().normal(1001).build());
@@ -50,7 +50,7 @@ public class WaveIntegrationTest {
         }
         assertTrue(world.areWavesFinished());
         assertEquals(5, world.getCurrentWave());
-        assertArrayEquals(new int[] {102, 34, 9}, counts);
+        assertArrayEquals(new int[] {184, 54, 14}, counts);
         world.update(1f, 0f, 0f);
         assertTrue(world.getZombies().isEmpty());
         world.reset();
