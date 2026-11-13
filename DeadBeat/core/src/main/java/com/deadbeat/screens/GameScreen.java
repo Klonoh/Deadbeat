@@ -13,6 +13,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
+import com.deadbeat.audio.AudioSettings;
 import com.deadbeat.audio.SoundtrackPlayer;
 import com.deadbeat.entities.Player;
 import com.deadbeat.world.CityMap;
@@ -109,7 +110,7 @@ public final class GameScreen extends ScreenAdapter {
     private long runStartedAtNanos;
 
     public GameScreen() {
-        this(SoundtrackPlayer.DEFAULT_VOLUME, false);
+        this(AudioSettings.getInstance().getVolume(), AudioSettings.getInstance().isMuted());
     }
 
     /** Conserva el volumen y mute elegidos desde el menu principal. */
@@ -143,9 +144,10 @@ public final class GameScreen extends ScreenAdapter {
         }
 
         world = new GameWorld();
+        AudioSettings audioSettings = AudioSettings.getInstance();
+        audioSettings.setVolume(initialVolume);
+        audioSettings.setMuted(initiallyMuted);
         soundtrack = new SoundtrackPlayer();
-        soundtrack.setVolume(initialVolume);
-        if (initiallyMuted) soundtrack.toggleMute();
         paused = false;
         selectedButton = 0;
         runStartedAtNanos = System.nanoTime();
