@@ -9,7 +9,8 @@ public class CombatIntegrationTest {
     @Test
     public void resetRestoresMapCombatAndEquipment() {
         GameWorld world = new GameWorld(false);
-        assertEquals(5, world.getZombies().size());
+        assertTrue(world.getZombies().isEmpty());
+        world.update(0.001f, 0f, 0f);
         for (Zombie zombie : world.getZombies()) {
             assertFalse(world.getCityMap().collidesCircle(
                     zombie.getX(), zombie.getY(), zombie.getRadius()));
@@ -19,7 +20,7 @@ public class CombatIntegrationTest {
         assertTrue(world.getZombies().isEmpty());
         world.getPlayer().takeDamage(20f);
         world.reset();
-        assertEquals(5, world.getZombies().size());
+        assertTrue(world.getZombies().isEmpty());
         assertEquals(2, world.getPlayer().getWeapons().size());
         assertEquals(100f, world.getPlayer().getHealth(), 0f);
         assertEquals(0, world.getProjectileCount());
@@ -34,7 +35,7 @@ public class CombatIntegrationTest {
         for (int i = 0; i < 600; i++) {
             world.update(1f / 60f, 0f, 0f);
         }
-        assertTrue(world.getZombies().size() < 5);
+        assertTrue(world.getZombies().size() < 1 + (int) (world.getElapsedTime() / 30f * 14));
         assertTrue(world.getPlayer().isAlive());
         world.dispose();
     }
@@ -42,6 +43,7 @@ public class CombatIntegrationTest {
     @Test
     public void areaAttackHitsEachNearbyEnemyOnce() {
         GameWorld world = new GameWorld(false);
+        world.update(0.001f, 0f, 0f);
         assertFalse(world.strikeNearby(1f, 12f));
         float health = world.getZombies().get(0).getHealth();
         assertTrue(world.strikeNearby(1000f, 12f));
@@ -51,6 +53,7 @@ public class CombatIntegrationTest {
     @Test
     public void projectileImpactAndExpiryAreCleanedUp() {
         GameWorld world = new GameWorld(false);
+        world.update(0.001f, 0f, 0f);
         Zombie target = world.getZombies().get(0);
         float health = target.getHealth();
         world.addProjectile(new Projectile(target.getX(), target.getY(), 1f, 0f, 5f));
@@ -67,15 +70,16 @@ public class CombatIntegrationTest {
     @Test
     public void contactUsesPlayerInvulnerability() {
         GameWorld world = new GameWorld(false);
-        Zombie target = world.getZombies().get(2);
+        world.update(0.001f, 0f, 0f);
+        Zombie target = world.getZombies().get(0);
         target.setMovementStrategy((zombie, player, delta) -> {
-            float dx = player.getX() - zombie.getX();
+            float dx = player.getX() + 25f - zombie.getX();
             float dy = player.getY() - zombie.getY();
             zombie.advance(dx, dy, (float) Math.sqrt(dx * dx + dy * dy) / zombie.getType().speed);
         });
         world.update(0.001f, 0f, 0f);
         float health = world.getPlayer().getHealth();
-        assertEquals(84f, health, 0f);
+        assertEquals(90f, health, 0f);
         world.update(0.001f, 0f, 0f);
         assertEquals(health, world.getPlayer().getHealth(), 0f);
         assertTrue(world.getPlayer().isInvulnerable());
