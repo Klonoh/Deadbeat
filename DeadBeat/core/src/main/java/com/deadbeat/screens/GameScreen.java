@@ -71,6 +71,11 @@ public final class GameScreen extends ScreenAdapter {
     private long runStartedAtNanos;
 
     public GameScreen() {
+        this(SoundtrackPlayer.DEFAULT_VOLUME, false);
+    }
+
+    /** Conserva el volumen y mute elegidos desde el menu principal. */
+    public GameScreen(float initialVolume, boolean initiallyMuted) {
         worldViewport = new FitViewport(VIEW_WIDTH, VIEW_HEIGHT);
         hudViewport = new FitViewport(VIEW_WIDTH, VIEW_HEIGHT, new OrthographicCamera());
         batch = new SpriteBatch();
@@ -99,6 +104,8 @@ public final class GameScreen extends ScreenAdapter {
 
         world = new GameWorld();
         soundtrack = new SoundtrackPlayer();
+        soundtrack.setVolume(initialVolume);
+        if (initiallyMuted) soundtrack.toggleMute();
         paused = false;
         selectedButton = 0;
         runStartedAtNanos = System.nanoTime();
