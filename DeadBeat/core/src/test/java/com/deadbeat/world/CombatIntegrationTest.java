@@ -68,10 +68,19 @@ public class CombatIntegrationTest {
     }
 
     @Test
-    public void contactUsesPlayerInvulnerability() {
+    public void contactUsesPlayerInvulnerability() throws Exception {
         GameWorld world = new GameWorld(false);
         world.update(0.001f, 0f, 0f);
-        Zombie target = world.getZombies().get(0);
+        // aísla el contacto de las posiciones aleatorias y los obstáculos del mapa.
+        Zombie target = new Zombie(world.getPlayer().getX() + 25f,
+                world.getPlayer().getY(), com.deadbeat.entities.ZombieType.NORMAL,
+                new com.badlogic.gdx.math.Rectangle(0f, 0f, CityMap.WORLD_SIZE, CityMap.WORLD_SIZE));
+        java.lang.reflect.Field field = GameWorld.class.getDeclaredField("zombies");
+        field.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        java.util.List<Zombie> enemies = (java.util.List<Zombie>) field.get(world);
+        enemies.clear();
+        enemies.add(target);
         target.setMovementStrategy((zombie, player, delta) -> {
             float dx = player.getX() + 25f - zombie.getX();
             float dy = player.getY() - zombie.getY();

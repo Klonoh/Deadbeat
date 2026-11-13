@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Disposable;
 import com.deadbeat.entities.Player;
+import com.deadbeat.entities.ExperienceOrb;
 import com.deadbeat.entities.Damageable;
 import com.deadbeat.entities.Projectile;
 import com.deadbeat.entities.Zombie;
@@ -38,6 +39,7 @@ public final class GameWorld implements Disposable {
     private final Rectangle arena;
     private final List<Zombie> zombies = new ArrayList<>();
     private final List<Projectile> projectiles = new ArrayList<>();
+    private final List<ExperienceOrb> orbs = new ArrayList<>();
     private float elapsedTime;
     private float pulse;
 
@@ -143,13 +145,34 @@ public final class GameWorld implements Disposable {
         for (int i = zombies.size() - 1; i >= 0; i--) {
             Zombie zombie = zombies.get(i);
             if (!zombie.isAlive()) {
+                orbs.add(new ExperienceOrb(zombie.getX(), zombie.getY(),
+                        zombie.getType().experience));
                 zombies.remove(i);
             } else if (touch(player.getX(), player.getY(), player.getRadius(),
                     zombie.getX(), zombie.getY(), zombie.getRadius())) {
                 damage(player, zombie.getType().damage);
             }
         }
+        collectExperience();
         advanceWave();
+    }
+
+    private void collectExperience() {
+        if (!player.isAlive()) {
+            return;
+        }
+        for (int i = orbs.size() - 1; i >= 0; i--) {
+            ExperienceOrb orb = orbs.get(i);
+            // conserva los radios de recogida de la versión original.
+            if (touch(player.getX(), player.getY(), 28f, orb.getX(), orb.getY(), 5f)) {
+                player.addExperience(orb.getAmount());
+                orbs.remove(i);
+            }
+        }
+    }
+
+    public List<ExperienceOrb> getOrbs() {
+        return Collections.unmodifiableList(orbs);
     }
 
     private void updateSpawning(float delta) {
@@ -288,6 +311,7 @@ public final class GameWorld implements Disposable {
         pulse = 0f;
         zombies.clear();
         projectiles.clear();
+        orbs.clear();
         waveIndex = 0;
         waveTime = 0f;
         spawned = 0;
@@ -297,6 +321,9 @@ public final class GameWorld implements Disposable {
     public void draw(SpriteBatch batch, float viewLeft, float viewBottom,
                      float viewWidth, float viewHeight) {
         cityRenderer.draw(batch, viewLeft, viewBottom, viewWidth, viewHeight);
+        for (ExperienceOrb orb : orbs) {
+            rect(batch, orb.getX() - 4f, orb.getY() - 4f, 8f, 8f, 0.2f, 0.9f, 1f);
+        }
         for (Zombie zombie : zombies) {
             float radius = zombie.getRadius();
             if (zombie.getType() == ZombieType.NORMAL) {
