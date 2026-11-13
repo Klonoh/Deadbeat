@@ -11,6 +11,7 @@ import com.deadbeat.entities.Projectile;
 import com.deadbeat.entities.Zombie;
 import com.deadbeat.entities.ZombieType;
 import com.deadbeat.graphics.PlayerSpriteRenderer;
+import com.deadbeat.graphics.ZombieSpriteRenderer;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,6 +24,7 @@ public final class GameWorld implements Disposable {
     private final CityRenderer cityRenderer;
     private final Player player;
     private final PlayerSpriteRenderer playerSpriteRenderer;
+    private final ZombieSpriteRenderer zombieSpriteRenderer;
     private final Rectangle arena;
     private final List<Zombie> zombies = new ArrayList<>();
     private final List<Projectile> projectiles = new ArrayList<>();
@@ -46,10 +48,12 @@ public final class GameWorld implements Disposable {
             pixmap.dispose();
             cityRenderer = new CityRenderer(cityMap, pixel);
             playerSpriteRenderer = new PlayerSpriteRenderer();
+            zombieSpriteRenderer = new ZombieSpriteRenderer();
         } else {
             pixel = null;
             cityRenderer = null;
             playerSpriteRenderer = null;
+            zombieSpriteRenderer = null;
         }
         reset();
     }
@@ -199,11 +203,21 @@ public final class GameWorld implements Disposable {
         cityRenderer.draw(batch, viewLeft, viewBottom, viewWidth, viewHeight);
         for (Zombie zombie : zombies) {
             float radius = zombie.getRadius();
-            rect(batch, zombie.getX() - radius, zombie.getY() - radius,
-                    2f * radius, 2f * radius,
-                    zombie.getType() == ZombieType.TANK ? 0.65f : 0.3f,
-                    zombie.getType() == ZombieType.FAST ? 0.8f : 0.5f, 0.18f);
-            rect(batch, zombie.getX() - radius, zombie.getY() + radius + 3f,
+            if (zombie.getType() == ZombieType.NORMAL) {
+                // Solo NORMAL utiliza las tres variantes visuales.
+                rect(batch, zombie.getX() - 13f, zombie.getY() - 11f,
+                        26f, 4f, .09f, .09f, .10f);
+                zombieSpriteRenderer.draw(batch, zombie);
+            } else {
+                // FAST y TANK conservan el aspecto provisional previo.
+                rect(batch, zombie.getX() - radius, zombie.getY() - radius,
+                        2f * radius, 2f * radius,
+                        zombie.getType() == ZombieType.TANK ? 0.65f : 0.3f,
+                        zombie.getType() == ZombieType.FAST ? 0.8f : 0.5f, 0.18f);
+            }
+            float barY = zombie.getType() == ZombieType.NORMAL
+                    ? zombie.getY() + 70f : zombie.getY() + radius + 3f;
+            rect(batch, zombie.getX() - radius, barY,
                     2f * radius * zombie.getHealth() / zombie.getType().health,
                     3f, 0.95f, 0.2f, 0.4f);
         }
@@ -252,6 +266,9 @@ public final class GameWorld implements Disposable {
     public void dispose() {
         if (playerSpriteRenderer != null) {
             playerSpriteRenderer.dispose();
+        }
+        if (zombieSpriteRenderer != null) {
+            zombieSpriteRenderer.dispose();
         }
         if (cityRenderer != null) {
             cityRenderer.dispose();

@@ -4,23 +4,32 @@ import com.badlogic.gdx.math.Rectangle;
 import com.deadbeat.movement.*;
 
 import java.util.Objects;
+import java.util.concurrent.ThreadLocalRandom;
 
-/** enemigo con movimiento intercambiable y límites definidos por el mundo. */
+/** Enemigo con movimiento intercambiable y apariencia fija desde su creación. */
 public final class Zombie implements Damageable {
     private static final MovementStrategy CHASE = new ChaseMovement(),
             ZIGZAG = new ZigzagMovement();
+    public static final int COMMON_VARIANTS = 3;
 
     private final ZombieType type;
     private final Rectangle arena;
+    /** -1 para FAST/TANK, índice 0..2 para NORMAL. */
+    private final int visualVariant;
     private float x, y, health, age;
+    private float facingX = 0f, facingY = -1f;
+    private boolean moving;
     private MovementStrategy strategy;
 
     public Zombie(float x, float y, ZombieType type, Rectangle arena) {
         this.type = Objects.requireNonNull(type);
-        this.arena = new Rectangle(arena);
+        this.arena = new Rectangle(Objects.requireNonNull(arena));
         this.x = x;
         this.y = y;
         health = type.health;
+        visualVariant = type == ZombieType.NORMAL
+                ? ThreadLocalRandom.current().nextInt(COMMON_VARIANTS)
+                : -1;
         setMovementStrategy(type == ZombieType.FAST ? ZIGZAG : CHASE);
         advance(0, 0, 0);
     }
@@ -38,9 +47,12 @@ public final class Zombie implements Damageable {
 
     public void advance(float dx, float dy, float delta) {
         float length = (float) Math.sqrt(dx * dx + dy * dy);
-        if (length > 0) {
-            x += dx / length * type.speed * delta;
-            y += dy / length * type.speed * delta;
+        moving = length > 0f && delta > 0f;
+        if (moving) {
+            facingX = dx / length;
+            facingY = dy / length;
+            x += facingX * type.speed * delta;
+            y += facingY * type.speed * delta;
         }
 
         x = Math.max(arena.x + getRadius(),
@@ -88,5 +100,22 @@ public final class Zombie implements Damageable {
 
     public ZombieType getType() {
         return type;
+    }
+
+    /** Apariencia seleccionada al aparecer; nunca se vuelve a sortear al dibujar. */
+    public int getVisualVariant() {
+        return visualVariant;
+    }
+
+    public float getFacingX() {
+        return facingX;
+    }
+
+    public float getFacingY() {
+        return facingY;
+    }
+
+    public boolean isMoving() {
+        return moving;
     }
 }
