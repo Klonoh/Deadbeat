@@ -455,6 +455,25 @@ public final class CityMap implements CollisionMap {
         return dx*dx+dy*dy <= radius*radius;
     }
 
+    /** Solo objetos que visualmente ocupan espacio bloquean el desplazamiento. */
+    private static boolean solidDecoration(DecorKind kind) {
+        switch (kind) {
+            case FENCE:
+            case TIRES:
+            case PALLET:
+            case BARREL:
+            case VENDING:
+            case POWER:
+            case BENCH:
+            case BIN:
+            case LAMP:
+                return true;
+            default:
+                // Basura rompible, charcos, papeles, maleza y grafitis son transitables.
+                return false;
+        }
+    }
+
     @Override public boolean collidesCircle(float x,float y,float radius) {
         if(!Float.isFinite(x)||!Float.isFinite(y)||!Float.isFinite(radius)||radius<0f)return true;
         if(x-radius<0||y-radius<0||x+radius>WORLD_SIZE||y+radius>WORLD_SIZE)return true;
@@ -467,10 +486,10 @@ public final class CityMap implements CollisionMap {
                 Obstacle o=block.obstacle(k);
                 if(circleIntersectsRect(x,y,radius,o.x,o.y,o.width,o.height))return true;
             }
-            // Legacy and future decorative fence placements must never be walk-through.
+            // Consistent solid props for player, zombies, spawning and projectiles.
             for(int k=0;k<block.decorationCount();k++) {
                 Decoration d=block.decoration(k);
-                if(d.kind==DecorKind.FENCE
+                if(solidDecoration(d.kind)
                         && circleIntersectsRect(x,y,radius,d.x,d.y,d.width,d.height))return true;
             }
         }
