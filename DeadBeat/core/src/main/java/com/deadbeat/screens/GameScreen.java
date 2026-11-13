@@ -32,6 +32,19 @@ public final class GameScreen extends ScreenAdapter {
     private static final int MASK_WIDTH = 206;
     private static final int MASK_HEIGHT = 49;
 
+    // Notificacion de cancion: esquina superior derecha y sin lemas decorativos.
+    private static final float PLAYER_HUD_W = 282f;
+    private static final float PLAYER_HUD_H = 83f;
+    private static final float PLAYER_HUD_X = VIEW_WIDTH - PLAYER_HUD_W - 12f;
+    private static final float PLAYER_HUD_Y = VIEW_HEIGHT - PLAYER_HUD_H - 12f;
+    private static final float MUSIC_BUTTON_W = 66f;
+    private static final float MUSIC_BUTTON_H = 16f;
+    private static final float MUSIC_BUTTON_Y = PLAYER_HUD_Y + 4f;
+    private static final float PREVIOUS_X = PLAYER_HUD_X + 12f;
+    private static final float NEXT_X = PLAYER_HUD_X + PLAYER_HUD_W - MUSIC_BUTTON_W - 12f;
+    private static final float MUSIC_HUD_HOLD_SECONDS = 5f;
+    private static final float MUSIC_HUD_FADE_SECONDS = 1.25f;
+
     private static final float MENU_X = 255f;
     private static final float MENU_Y = 40f;
     private static final float MENU_WIDTH = 450f;
@@ -56,6 +69,7 @@ public final class GameScreen extends ScreenAdapter {
     private final BitmapFont titleFont;
     private final BitmapFont menuFont;
     private final BitmapFont smallFont;
+    private final BitmapFont trackFont;
     private final GlyphLayout glyph = new GlyphLayout();
     private final Vector2 mouseInHud = new Vector2();
     private final Texture pixel;
@@ -67,6 +81,12 @@ public final class GameScreen extends ScreenAdapter {
     private boolean paused;
     private boolean draggingVolume;
     private int selectedButton; // 0 = continuar, 1 = salir
+    // Evita crear cadenas y recalcular el ancho del texto cada frame.
+    private int displayedTrackNumber = -1;
+    private String displayedTitle = "";
+    private String displayedArtist = "";
+    // El tiempo de visibilidad no depende del estado de pausa ni del reinicio con R.
+    private long musicHudChangedAtNanos;
     // Monotonic wall-clock time includes pauses and time spent outside the game window.
     private long runStartedAtNanos;
 
@@ -86,6 +106,8 @@ public final class GameScreen extends ScreenAdapter {
         menuFont.getData().setScale(1.7f);
         smallFont = new BitmapFont();
         smallFont.getData().setScale(1.15f);
+        trackFont = new BitmapFont();
+        trackFont.getData().setScale(1.22f);
 
         Pixmap white = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
         white.setColor(1f, 1f, 1f, 1f);
@@ -116,6 +138,10 @@ public final class GameScreen extends ScreenAdapter {
     public void render(float delta) {
         // La lista de música continúa también mientras la simulación está pausada.
         soundtrack.update();
+        // Q/E cambian de pista sin detener ni pausar el reproductor.
+        if (Gdx.input.isKeyJustPressed(Input.Keys.Q)) soundtrack.previousTrack();
+        else if (Gdx.input.isKeyJustPressed(Input.Keys.E)) soundtrack.nextTrack();
+        syncMusicHudTrack();
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             paused = !paused;
             selectedButton = 0;
@@ -125,6 +151,7 @@ public final class GameScreen extends ScreenAdapter {
         if (paused) {
             handlePauseMenuInput();
         } else {
+            handleMusicHudClick();
             if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
                 world.reset();
                 runStartedAtNanos = System.nanoTime();
@@ -151,11 +178,26 @@ public final class GameScreen extends ScreenAdapter {
         batch.setProjectionMatrix(hudViewport.getCamera().combined);
         batch.begin();
         drawGuitarHealth(world.getPlayer());
+        drawMusicHud();
         if (paused) {
             drawPauseMenu();
         }
         batch.setColor(1f, 1f, 1f, 1f);
         batch.end();
+    }
+
+    /** Los botones del HUD son opcionales: Q/E funcionan incluso sin raton. */
+    private void handleMusicHudClick() {
+        // Una vez desvanecido, no hay botones invisibles que intercepten clics.
+        if (!Gdx.input.isButtonJustPressed(Input.Buttons.LEFT) || musicHudOpacity() <= .05f) return;
+        hudViewport.unproject(mouseInHud.set(Gdx.input.getX(), Gdx.input.getY()));
+        float x = mouseInHud.x;
+        float y = mouseInHud.y;
+        if (inside(x, y, PREVIOUS_X, MUSIC_BUTTON_Y, MUSIC_BUTTON_W, MUSIC_BUTTON_H)) {
+            soundtrack.previousTrack();
+        } else if (inside(x, y, NEXT_X, MUSIC_BUTTON_Y, MUSIC_BUTTON_W, MUSIC_BUTTON_H)) {
+            soundtrack.nextTrack();
+        }
     }
 
     private void handlePauseMenuInput() {
@@ -260,6 +302,89 @@ public final class GameScreen extends ScreenAdapter {
         }
         batch.setColor(1f, 1f, 1f, 1f);
         batch.draw(guitarOutline, x, y, GUITAR_WIDTH, GUITAR_HEIGHT);
+    }
+
+    /** Detecta tanto el cambio automatico como el manual con Q/E o clic. */
+    private void syncMusicHudTrack() {
+        int number = soundtrack.getTrackNumber();
+        if (number == displayedTrackNumber) return;
+        displayedTrackNumber = number;
+        displayedTitle = number == 0 ? "" : fitting(trackFont, soundtrack.getCurrentTitle(), PLAYER_HUD_W - 28f);
+        displayedArtist = number == 0 ? "" : fitting(smallFont, soundtrack.getCurrentArtist(), PLAYER_HUD_W - 28f);
+        musicHudChangedAtNanos = System.nanoTime();
+    }
+
+    /** Cinco segundos totalmente visibles y fade-out suave durante 1,25 segundos. */
+    private float musicHudOpacity() {
+        if (displayedTrackNumber <= 0) return 0f;
+        float seconds = Math.max(0f, (System.nanoTime() - musicHudChangedAtNanos) / 1_000_000_000f);
+        if (seconds <= MUSIC_HUD_HOLD_SECONDS) return 1f;
+        float t = (seconds - MUSIC_HUD_HOLD_SECONDS) / MUSIC_HUD_FADE_SECONDS;
+        if (t >= 1f) return 0f;
+        // Smoothstep: el fade comienza y termina sin saltos de opacidad.
+        float smooth = t * t * (3f - 2f * t);
+        return 1f - smooth;
+    }
+
+    /** Notificacion compacta, semitransparente y con fade de todos sus elementos. */
+    private void drawMusicHud() {
+        float alpha = musicHudOpacity();
+        if (alpha <= 0f) return;
+        float x = PLAYER_HUD_X;
+        float y = PLAYER_HUD_Y;
+        // La ciudad permanece visible a traves del metal oscuro.
+        musicBlock(x + 3f, y - 2f, PLAYER_HUD_W, PLAYER_HUD_H,
+                .025f, .02f, .03f, .20f, alpha);
+        musicBlock(x, y, PLAYER_HUD_W, PLAYER_HUD_H,
+                .09f, .08f, .095f, .43f, alpha);
+        musicBlock(x + 3f, y + 3f, PLAYER_HUD_W - 6f, PLAYER_HUD_H - 6f,
+                .13f, .11f, .12f, .28f, alpha);
+        musicBlock(x + 3f, y + PLAYER_HUD_H - 8f, PLAYER_HUD_W - 6f, 4f,
+                .83f, .18f, .25f, .87f, alpha);
+        for (int i = 0; i < 4; i++) {
+            musicBlock(x + 8f + i * 82f, y + 4f, 3f, 3f,
+                    .69f, .52f, .43f, .78f, alpha);
+        }
+
+        trackFont.setColor(.99f, .91f, .78f, alpha);
+        glyph.setText(trackFont, displayedTitle);
+        trackFont.draw(batch, glyph, x + 12f, y + 61f);
+        smallFont.setColor(.74f, .70f, .67f, alpha);
+        glyph.setText(smallFont, displayedArtist);
+        smallFont.draw(batch, glyph, x + 12f, y + 43f);
+
+        // Los controles ocupan una franja independiente bajo el nombre de la banda.
+        drawMusicHudButton(PREVIOUS_X, MUSIC_BUTTON_Y, "Q  <<", alpha);
+        drawMusicHudButton(NEXT_X, MUSIC_BUTTON_Y, ">>  E", alpha);
+    }
+
+    private void musicBlock(float x, float y, float w, float h,
+                            float r, float g, float b, float baseAlpha, float fade) {
+        block(x, y, w, h, r, g, b, baseAlpha * fade);
+    }
+
+    private void drawMusicHudButton(float x, float y, String label, float fade) {
+        musicBlock(x + 2f, y - 2f, MUSIC_BUTTON_W, MUSIC_BUTTON_H,
+                .03f, .02f, .03f, .32f, fade);
+        musicBlock(x, y, MUSIC_BUTTON_W, MUSIC_BUTTON_H,
+                .38f, .13f, .20f, .77f, fade);
+        musicBlock(x + 2f, y + 2f, 4f, MUSIC_BUTTON_H - 4f,
+                .95f, .43f, .21f, .90f, fade);
+        centered(smallFont, label, x + MUSIC_BUTTON_W / 2f, y + 13f,
+                1f, .88f, .73f, fade);
+    }
+
+    /** Recorta visualmente titulos largos sin truncar los metadatos reales. */
+    private String fitting(BitmapFont font, String value, float maxWidth) {
+        glyph.setText(font, value);
+        if (glyph.width <= maxWidth) return value;
+        String ellipsis = "...";
+        for (int limit = value.length() - 1; limit >= 0; limit--) {
+            String text = value.substring(0, limit).trim() + ellipsis;
+            glyph.setText(font, text);
+            if (glyph.width <= maxWidth) return text;
+        }
+        return ellipsis;
     }
 
     private void drawPauseMenu() {
@@ -405,6 +530,7 @@ public final class GameScreen extends ScreenAdapter {
         titleFont.dispose();
         menuFont.dispose();
         smallFont.dispose();
+        trackFont.dispose();
         guitarMask.dispose();
         guitarOutline.dispose();
         pixel.dispose();
