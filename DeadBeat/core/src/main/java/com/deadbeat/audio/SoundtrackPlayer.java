@@ -39,8 +39,7 @@ public final class SoundtrackPlayer implements Disposable {
 
     private Music current;
     private int currentIndex = -1;
-    private float volume = DEFAULT_VOLUME;
-    private boolean muted;
+    private final AudioSettings audioSettings = AudioSettings.getInstance();
     private volatile boolean nextRequested;
     private boolean disposed;
 
@@ -192,21 +191,20 @@ public final class SoundtrackPlayer implements Disposable {
 
     public int getTrackNumber() { return currentIndex + 1; }
     public int getAvailableTrackCount() { return order.length; }
-    public float getVolume() { return volume; }
-    public boolean isMuted() { return muted; }
+    public float getVolume() { return audioSettings.getVolume(); }
+    public boolean isMuted() { return audioSettings.isMuted(); }
 
     public void setVolume(float amount) {
-        if (!Float.isFinite(amount)) return;
-        volume = Math.max(0f, Math.min(1f, amount));
+        audioSettings.setVolume(amount);
         applyVolume();
     }
 
     public void toggleMute() {
-        muted = !muted;
+        audioSettings.toggleMute();
         applyVolume();
     }
 
-    private float effectiveVolume() { return muted ? 0f : volume; }
+    private float effectiveVolume() { return audioSettings.getEffectiveVolume(); }
 
     private void applyVolume() {
         if (current != null) current.setVolume(effectiveVolume());
