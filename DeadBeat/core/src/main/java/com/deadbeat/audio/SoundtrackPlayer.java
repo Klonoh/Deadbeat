@@ -39,6 +39,7 @@ public final class SoundtrackPlayer implements Disposable {
 
     private Music current;
     private int currentIndex = -1;
+    private float appliedVolume = Float.NaN;
     private final AudioSettings audioSettings = AudioSettings.getInstance();
     private volatile boolean nextRequested;
     private boolean disposed;
@@ -57,7 +58,9 @@ public final class SoundtrackPlayer implements Disposable {
 
     /** Avanza al terminar una pista, en el hilo de render incluso si hay pausa. */
     public void update() {
-        if (disposed || !nextRequested) return;
+        if (disposed) return;
+        applyVolume();
+        if (!nextRequested) return;
         nextRequested = false;
         nextTrack();
     }
@@ -124,7 +127,9 @@ public final class SoundtrackPlayer implements Disposable {
         try {
             candidate = Gdx.audio.newMusic(file);
             candidate.setLooping(false);
-            candidate.setVolume(effectiveVolume());
+            float volume = effectiveVolume();
+            candidate.setVolume(volume);
+            appliedVolume = volume;
             current = candidate;
             currentIndex = index;
             candidate.setOnCompletionListener(music -> {
@@ -140,6 +145,7 @@ public final class SoundtrackPlayer implements Disposable {
             if (candidate != null) candidate.dispose();
             current = null;
             currentIndex = -1;
+            appliedVolume = Float.NaN;
             return false;
         }
     }
@@ -207,7 +213,12 @@ public final class SoundtrackPlayer implements Disposable {
     private float effectiveVolume() { return audioSettings.getEffectiveVolume(); }
 
     private void applyVolume() {
-        if (current != null) current.setVolume(effectiveVolume());
+        if (current == null) return;
+        float volume = effectiveVolume();
+        if (volume != appliedVolume) {
+            current.setVolume(volume);
+            appliedVolume = volume;
+        }
     }
 
     private void stopCurrent() {
@@ -217,6 +228,7 @@ public final class SoundtrackPlayer implements Disposable {
             current = null;
         }
         currentIndex = -1;
+        appliedVolume = Float.NaN;
     }
 
     @Override public void dispose() {

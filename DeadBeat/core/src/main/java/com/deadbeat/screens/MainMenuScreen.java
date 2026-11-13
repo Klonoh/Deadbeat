@@ -15,7 +15,7 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.deadbeat.DeadbeatGame;
-import com.deadbeat.audio.SoundtrackPlayer;
+import com.deadbeat.audio.AudioSettings;
 
 /**
  * Menu principal. Solo reproduce music/main_theme.mp3 (si existe):
@@ -52,8 +52,8 @@ public final class MainMenuScreen extends ScreenAdapter {
     private float elapsed;
     private boolean disposed;
     private boolean draggingVolume;
-    private float volume = SoundtrackPlayer.DEFAULT_VOLUME;
-    private boolean muted;
+    private final AudioSettings audioSettings = AudioSettings.getInstance();
+    private float appliedThemeVolume = Float.NaN;
 
     public MainMenuScreen(DeadbeatGame game) {
         if (game == null) throw new IllegalArgumentException("DeadbeatGame requerido");
@@ -92,6 +92,7 @@ public final class MainMenuScreen extends ScreenAdapter {
     public void render(float delta) {
         elapsed += Math.max(0f, Math.min(delta, 0.05f));
         if (handleInput()) return;
+        applyThemeVolume();
 
         ScreenUtils.clear(.045f, .044f, .052f, 1f);
         viewport.apply();
@@ -116,8 +117,8 @@ public final class MainMenuScreen extends ScreenAdapter {
             selected = 1 - selected;
         }
         // Los controles de volumen no cambian el boton JUGAR/SALIR seleccionado.
-        if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) changeVolume(volume - .05f);
-        if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) changeVolume(volume + .05f);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) changeVolume(audioSettings.getVolume() - .05f);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) changeVolume(audioSettings.getVolume() + .05f);
         if (Gdx.input.isKeyJustPressed(Input.Keys.M)) toggleMute();
 
         viewport.unproject(mouse.set(Gdx.input.getX(), Gdx.input.getY()));
@@ -170,7 +171,7 @@ public final class MainMenuScreen extends ScreenAdapter {
         }
         // Stop the main theme BEFORE GameScreen creates its shuffled playlist.
         stopTheme();
-        game.setScreen(new GameScreen(volume, muted));
+        game.setScreen(new GameScreen());
         dispose();
         return true;
     }
@@ -230,6 +231,8 @@ public final class MainMenuScreen extends ScreenAdapter {
 
     /** Barra de volumen sin leyendas; el tema responde en tiempo real. */
     private void drawVolumeSlider() {
+        float volume = audioSettings.getVolume();
+        boolean muted = audioSettings.isMuted();
         // Bocina pixelada, silenciable con clic o M.
         box(SPEAKER_X + 2f, SPEAKER_Y + 8f, 8f, 11f, .93f, .79f, .73f, 1f);
         box(SPEAKER_X + 9f, SPEAKER_Y + 4f, 6f, 19f, .93f, .79f, .73f, 1f);
@@ -257,19 +260,24 @@ public final class MainMenuScreen extends ScreenAdapter {
 
     private void changeVolume(float value) {
         if (!Float.isFinite(value)) return;
-        volume = Math.max(0f, Math.min(1f, value));
+        audioSettings.setVolume(value);
         // Arrastrar el slider vuelve a habilitar el audio si se habia muteado.
-        muted = false;
+        audioSettings.setMuted(false);
         applyThemeVolume();
     }
 
     private void toggleMute() {
-        muted = !muted;
+        audioSettings.toggleMute();
         applyThemeVolume();
     }
 
     private void applyThemeVolume() {
-        if (menuTheme != null) menuTheme.setVolume(muted ? 0f : volume);
+        if (menuTheme == null) return;
+        float volume = audioSettings.getEffectiveVolume();
+        if (volume != appliedThemeVolume) {
+            menuTheme.setVolume(volume);
+            appliedThemeVolume = volume;
+        }
     }
 
     private void drawButton(float y, String label, boolean active) {
@@ -306,6 +314,7 @@ public final class MainMenuScreen extends ScreenAdapter {
             menuTheme.dispose();
             menuTheme = null;
         }
+        appliedThemeVolume = Float.NaN;
     }
 
     @Override public void resize(int width, int height) {
