@@ -45,6 +45,19 @@ public final class GameScreen extends ScreenAdapter {
     private static final float MUSIC_HUD_HOLD_SECONDS = 5f;
     private static final float MUSIC_HUD_FADE_SECONDS = 1.25f;
 
+    // Panel final: madera/metal oxidado y acentos de peligro o victoria.
+    private static final float RESULT_X = 214f;
+    private static final float RESULT_Y = 65f;
+    private static final float RESULT_W = 532f;
+    private static final float RESULT_H = 411f;
+    private static final float RESULT_BUTTON_X = RESULT_X + 98f;
+    private static final float RESULT_BUTTON_W = RESULT_W - 196f;
+    private static final float RESULT_BUTTON_H = 61f;
+    private static final float RESULT_RETRY_Y = RESULT_Y + 128f;
+    private static final float RESULT_EXIT_Y = RESULT_Y + 43f;
+
+    private enum RunOutcome { PLAYING, DEFEAT, VICTORY }
+
     private static final float MENU_X = 255f;
     private static final float MENU_Y = 40f;
     private static final float MENU_WIDTH = 450f;
@@ -77,6 +90,11 @@ public final class GameScreen extends ScreenAdapter {
     private final Texture guitarOutline;
     private final GameWorld world;
     private final SoundtrackPlayer soundtrack;
+
+    private RunOutcome outcome = RunOutcome.PLAYING;
+    private int selectedResultButton; // 0: reintentar/reiniciar; 1: salir
+    private long runEndedAtNanos;
+    private int finalWave;
 
     private boolean paused;
     private boolean draggingVolume;
@@ -136,33 +154,33 @@ public final class GameScreen extends ScreenAdapter {
 
     @Override
     public void render(float delta) {
-        // La lista de música continúa también mientras la simulación está pausada.
+        // La musica sigue sonando durante pausa y pantallas de resultado.
         soundtrack.update();
-        // Q/E cambian de pista sin detener ni pausar el reproductor.
         if (Gdx.input.isKeyJustPressed(Input.Keys.Q)) soundtrack.previousTrack();
         else if (Gdx.input.isKeyJustPressed(Input.Keys.E)) soundtrack.nextTrack();
         syncMusicHudTrack();
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            paused = !paused;
-            selectedButton = 0;
-            draggingVolume = false;
-        }
 
-        if (paused) {
-            handlePauseMenuInput();
+        if (outcome != RunOutcome.PLAYING) {
+            handleResultInput();
         } else {
-            handleMusicHudClick();
-            if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
-                world.reset();
-                runStartedAtNanos = System.nanoTime();
+            if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+                paused = !paused;
+                selectedButton = 0;
+                draggingVolume = false;
             }
-            if (Gdx.input.isKeyJustPressed(Input.Keys.H)) {
-                world.getPlayer().takeDamage(20f);
+            if (paused) {
+                handlePauseMenuInput();
+            } else {
+                handleMusicHudClick();
+                if (Gdx.input.isKeyJustPressed(Input.Keys.R)) resetRun();
+                if (Gdx.input.isKeyJustPressed(Input.Keys.H)) {
+                    world.getPlayer().takeDamage(20f);
+                }
+                float safeDelta = Math.max(0f, Math.min(delta, 0.05f));
+                world.update(safeDelta);
+                followPlayer();
+                checkRunOutcome();
             }
-            // Se detienen zombis, proyectiles, armas y oleadas al pausar.
-            float safeDelta = Math.max(0f, Math.min(delta, 0.05f));
-            world.update(safeDelta);
-            followPlayer();
         }
 
         ScreenUtils.clear(0.05f, 0.055f, 0.07f, 1f);
@@ -179,11 +197,81 @@ public final class GameScreen extends ScreenAdapter {
         batch.begin();
         drawGuitarHealth(world.getPlayer());
         drawMusicHud();
-        if (paused) {
+        if (outcome != RunOutcome.PLAYING) {
+            drawResultScreen();
+        } else if (paused) {
             drawPauseMenu();
         }
         batch.setColor(1f, 1f, 1f, 1f);
         batch.end();
+    }
+
+    /** La prioridad de derrota evita declarar victoria si el jugador muere al final. */
+    private void checkRunOutcome() {
+        if (!world.getPlayer().isAlive()) {
+            finishRun(RunOutcome.DEFEAT);
+        } else if (world.areWavesFinished() && world.getZombies().isEmpty()) {
+            // La quinta oleada ha terminado Y ya no quedan enemigos vivos.
+            finishRun(RunOutcome.VICTORY);
+        }
+    }
+
+    private void finishRun(RunOutcome result) {
+        if (outcome != RunOutcome.PLAYING) return;
+        outcome = result;
+        finalWave = world.getCurrentWave();
+        runEndedAtNanos = System.nanoTime();
+        selectedResultButton = 0;
+        paused = false;
+        draggingVolume = false;
+    }
+
+    /** Reiniciar el mundo no modifica el reproductor ni su lista aleatoria. */
+    private void resetRun() {
+        world.reset();
+        runStartedAtNanos = System.nanoTime();
+        runEndedAtNanos = 0L;
+        finalWave = 0;
+        outcome = RunOutcome.PLAYING;
+        paused = false;
+        draggingVolume = false;
+        selectedResultButton = 0;
+        selectedButton = 0;
+        followPlayer();
+    }
+
+    private void handleResultInput() {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.UP)
+                || Gdx.input.isKeyJustPressed(Input.Keys.W)
+                || Gdx.input.isKeyJustPressed(Input.Keys.DOWN)
+                || Gdx.input.isKeyJustPressed(Input.Keys.S)) {
+            selectedResultButton = 1 - selectedResultButton;
+        }
+        hudViewport.unproject(mouseInHud.set(Gdx.input.getX(), Gdx.input.getY()));
+        int hovered = resultButtonUnderMouse(mouseInHud.x, mouseInHud.y);
+        if (hovered >= 0) selectedResultButton = hovered;
+
+        if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT) && hovered >= 0) {
+            activateResultButton(hovered);
+            return;
+        }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
+            activateResultButton(0);
+        } else if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)
+                || Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+            activateResultButton(selectedResultButton);
+        }
+    }
+
+    private int resultButtonUnderMouse(float x, float y) {
+        if (inside(x, y, RESULT_BUTTON_X, RESULT_RETRY_Y, RESULT_BUTTON_W, RESULT_BUTTON_H)) return 0;
+        if (inside(x, y, RESULT_BUTTON_X, RESULT_EXIT_Y, RESULT_BUTTON_W, RESULT_BUTTON_H)) return 1;
+        return -1;
+    }
+
+    private void activateResultButton(int button) {
+        if (button == 0) resetRun();
+        else Gdx.app.exit();
     }
 
     /** Los botones del HUD son opcionales: Q/E funcionan incluso sin raton. */
@@ -387,6 +475,86 @@ public final class GameScreen extends ScreenAdapter {
         return ellipsis;
     }
 
+    /** Pantallas finales compartidas: mismo metal punk, acentos distintos. */
+    private void drawResultScreen() {
+        boolean victory = outcome == RunOutcome.VICTORY;
+        float ar = victory ? .65f : .90f;
+        float ag = victory ? .80f : .17f;
+        float ab = victory ? .28f : .25f;
+
+        // Oscurece el escenario congelado; el jugador sigue visible de fondo.
+        block(0f, 0f, VIEW_WIDTH, VIEW_HEIGHT, .025f, .024f, .032f, .86f);
+        // Sombra desplazada y triple capa de metal envejecido.
+        block(RESULT_X + 9f, RESULT_Y - 9f, RESULT_W, RESULT_H,
+                .018f, .014f, .023f, .96f);
+        block(RESULT_X, RESULT_Y, RESULT_W, RESULT_H,
+                .21f, .17f, .18f, .98f);
+        block(RESULT_X + 7f, RESULT_Y + 7f, RESULT_W - 14f, RESULT_H - 14f,
+                .075f, .075f, .088f, .99f);
+        // Cabecera de metal oxidado, iluminada con rojo o verde radiactivo.
+        block(RESULT_X + 9f, RESULT_Y + RESULT_H - 106f, RESULT_W - 18f, 94f,
+                victory ? .15f : .35f, victory ? .22f : .075f,
+                victory ? .105f : .13f, 1f);
+        block(RESULT_X + 9f, RESULT_Y + RESULT_H - 113f, RESULT_W - 18f, 5f,
+                ar, ag, ab, 1f);
+        // Bandas de advertencia y marcas rayadas, sin añadir slogans.
+        for (int i = 0; i < 13; i++) {
+            float x = RESULT_X + 18f + i * 39f;
+            block(x, RESULT_Y + RESULT_H - 119f, 18f, 4f,
+                    ar, ag, ab, .55f);
+            block(x + 7f, RESULT_Y + 20f, 11f, 3f,
+                    .41f, .20f, .21f, .68f);
+        }
+        for (int i = 0; i < 8; i++) {
+            float px = RESULT_X + 17f + i * 70f;
+            block(px, RESULT_Y + RESULT_H - 20f, 5f, 5f,
+                    .70f, .55f, .45f, 1f);
+            block(px, RESULT_Y + 11f, 5f, 5f,
+                    .70f, .55f, .45f, 1f);
+        }
+        // Un par de 'rasgaduras' de color roto a ambos lados del panel.
+        for (int i = 0; i < 5; i++) {
+            block(RESULT_X + 21f + i * 7f, RESULT_Y + 267f - i * 8f,
+                    20f, 3f, ar, ag, ab, .5f);
+            block(RESULT_X + RESULT_W - 90f + i * 8f, RESULT_Y + 267f + i * 5f,
+                    22f, 3f, ar, ag, ab, .4f);
+        }
+
+        centered(titleFont, victory ? "VICTORIA" : "GAME OVER", VIEW_WIDTH / 2f,
+                RESULT_Y + RESULT_H - 51f, 1f, .90f, .80f, 1f);
+        centered(smallFont, victory ? "5 / 5 OLEADAS SUPERADAS"
+                        : "OLEADA ALCANZADA: " + finalWave + " / 5",
+                VIEW_WIDTH / 2f, RESULT_Y + 253f,
+                victory ? .85f : .94f, victory ? .96f : .72f,
+                victory ? .68f : .71f, 1f);
+        centered(menuFont, "TIEMPO  " + elapsedAsClock(), VIEW_WIDTH / 2f,
+                RESULT_Y + 216f, .96f, .86f, .77f, 1f);
+
+        drawResultButton(RESULT_RETRY_Y, victory ? "REINICIAR" : "REINTENTAR",
+                selectedResultButton == 0, ar, ag, ab);
+        drawResultButton(RESULT_EXIT_Y, "SALIR", selectedResultButton == 1,
+                ar, ag, ab);
+    }
+
+    private void drawResultButton(float y, String label, boolean active,
+                                  float ar, float ag, float ab) {
+        block(RESULT_BUTTON_X + 5f, y - 5f, RESULT_BUTTON_W, RESULT_BUTTON_H,
+                .025f, .02f, .032f, .93f);
+        block(RESULT_BUTTON_X, y, RESULT_BUTTON_W, RESULT_BUTTON_H,
+                active ? .29f : .18f, active ? .20f : .17f,
+                active ? .21f : .20f, 1f);
+        block(RESULT_BUTTON_X + 5f, y + 5f, 6f, RESULT_BUTTON_H - 10f,
+                active ? ar : .51f, active ? ag : .28f, active ? ab : .29f, 1f);
+        if (active) {
+            block(RESULT_BUTTON_X + RESULT_BUTTON_W - 10f, y + 5f,
+                    6f, RESULT_BUTTON_H - 10f, ar, ag, ab, 1f);
+            block(RESULT_BUTTON_X + 15f, y + 5f, RESULT_BUTTON_W - 30f, 3f,
+                    ar, ag, ab, .65f);
+        }
+        centered(menuFont, label, VIEW_WIDTH / 2f, y + 41f,
+                active ? 1f : .79f, active ? .94f : .81f, .74f, 1f);
+    }
+
     private void drawPauseMenu() {
         // World-facing city freezes underneath this dark overlay.
         block(0f, 0f, VIEW_WIDTH, VIEW_HEIGHT, .035f, .03f, .038f, .80f);
@@ -490,7 +658,8 @@ public final class GameScreen extends ScreenAdapter {
 
     /** Total elapsed real time. It intentionally includes every second spent paused. */
     private String elapsedAsClock() {
-        long seconds = Math.max(0L, (System.nanoTime() - runStartedAtNanos) / 1_000_000_000L);
+        long now = outcome == RunOutcome.PLAYING ? System.nanoTime() : runEndedAtNanos;
+        long seconds = Math.max(0L, (now - runStartedAtNanos) / 1_000_000_000L);
         return two(seconds / 3600) + ":" + two((seconds / 60) % 60) + ":" + two(seconds % 60);
     }
 

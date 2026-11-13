@@ -8,3 +8,6 @@ Daemon will be stopped at the end of the build
 > Task :lwjgl3:processResources NO-SOURCE
 > Task :lwjgl3:classes UP-TO-DATE
 > Task :lwjgl3:run
+
+BUILD SUCCESSFUL in 22s
+4 actionable tasks: 3 executed, 1 up-to-date
