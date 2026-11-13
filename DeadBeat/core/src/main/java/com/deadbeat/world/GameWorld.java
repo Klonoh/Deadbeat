@@ -102,14 +102,34 @@ public final class GameWorld implements Disposable {
 
         for (int i = projectiles.size() - 1; i >= 0; i--) {
             Projectile projectile = projectiles.get(i);
+            float oldX = projectile.getX();
+            float oldY = projectile.getY();
             projectile.update(delta);
-            for (Zombie zombie : zombies) {
-                if (projectile.isAlive() && zombie.isAlive()
-                        && touch(projectile.getX(), projectile.getY(), projectile.getRadius(),
-                                zombie.getX(), zombie.getY(), zombie.getRadius())) {
-                    damage(zombie, projectile.getDamage());
-                    projectile.expire();
-                    break;
+            if (projectile.isAlive()) {
+                // Barrido segmentado: una bala rapida no puede saltarse una valla
+                // ni impactar a un zombie situado al otro lado de un edificio.
+                float dx = projectile.getX() - oldX;
+                float dy = projectile.getY() - oldY;
+                float distance = (float) Math.sqrt(dx * dx + dy * dy);
+                float maxStep = Math.max(2f, projectile.getRadius() * 0.5f);
+                int steps = Math.max(1, (int) Math.ceil(distance / maxStep));
+                for (int step = 0; step <= steps && projectile.isAlive(); step++) {
+                    float t = (float) step / steps;
+                    float px = oldX + dx * t;
+                    float py = oldY + dy * t;
+                    if (cityMap.collidesCircle(px, py, projectile.getRadius())) {
+                        projectile.expire();
+                        break;
+                    }
+                    for (Zombie zombie : zombies) {
+                        if (zombie.isAlive()
+                                && touch(px, py, projectile.getRadius(),
+                                        zombie.getX(), zombie.getY(), zombie.getRadius())) {
+                            damage(zombie, projectile.getDamage());
+                            projectile.expire();
+                            break;
+                        }
+                    }
                 }
             }
             if (!arena.contains(projectile.getX(), projectile.getY())) {
@@ -185,7 +205,7 @@ public final class GameWorld implements Disposable {
                 }
             }
             if (!occupied) {
-                zombies.add(new Zombie(x, y, type, arena));
+                zombies.add(new Zombie(x, y, type, arena, cityMap));
                 return true;
             }
         }
@@ -280,19 +300,24 @@ public final class GameWorld implements Disposable {
         for (Zombie zombie : zombies) {
             float radius = zombie.getRadius();
             if (zombie.getType() == ZombieType.NORMAL) {
-                // Solo NORMAL utiliza las tres variantes visuales.
                 rect(batch, zombie.getX() - 13f, zombie.getY() - 11f,
                         26f, 4f, .09f, .09f, .10f);
                 zombieSpriteRenderer.draw(batch, zombie);
+            } else if (zombie.getType() == ZombieType.TANK) {
+                // El tanque mantiene una silueta mayor (128x128 vs. 64x80).
+                rect(batch, zombie.getX() - 25f, zombie.getY() - 14f,
+                        50f, 7f, .08f, .08f, .10f);
+                zombieSpriteRenderer.draw(batch, zombie);
             } else {
-                // FAST y TANK conservan el aspecto provisional previo.
-                rect(batch, zombie.getX() - radius, zombie.getY() - radius,
-                        2f * radius, 2f * radius,
-                        zombie.getType() == ZombieType.TANK ? 0.65f : 0.3f,
-                        zombie.getType() == ZombieType.FAST ? 0.8f : 0.5f, 0.18f);
+                // Fast variants are smaller than the common zombie sprite.
+                rect(batch, zombie.getX() - 10f, zombie.getY() - 9f,
+                        20f, 3f, .09f, .09f, .10f);
+                zombieSpriteRenderer.draw(batch, zombie);
             }
             float barY = zombie.getType() == ZombieType.NORMAL
-                    ? zombie.getY() + 70f : zombie.getY() + radius + 3f;
+                    ? zombie.getY() + 70f
+                    : zombie.getType() == ZombieType.TANK
+                    ? zombie.getY() + 114f : zombie.getY() + 59f;
             rect(batch, zombie.getX() - radius, barY,
                     2f * radius * zombie.getHealth() / zombie.getType().health,
                     3f, 0.95f, 0.2f, 0.4f);
