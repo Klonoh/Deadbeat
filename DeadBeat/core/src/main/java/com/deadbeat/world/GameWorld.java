@@ -16,9 +16,19 @@ import com.deadbeat.graphics.ZombieSpriteRenderer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
+import com.deadbeat.progression.Wave;
+import com.deadbeat.progression.WaveBuilder;
 
 /** integra el mapa de la ciudad con las entidades de combate. */
 public final class GameWorld implements Disposable {
+    private static final int MAX_ZOMBIES = 80;
+    private final Wave[] waves;
+    private final Random random = new Random();
+    private int waveIndex;
+    private int spawned;
+    private float waveTime;
+    private boolean wavesFinished;
     private final Texture pixel;
     private final CityMap cityMap;
     private final CityRenderer cityRenderer;
@@ -37,6 +47,12 @@ public final class GameWorld implements Disposable {
 
     /** permite probar la simulación sin recursos gráficos. */
     public GameWorld(boolean graphics) {
+        this(graphics, 30f);
+    }
+
+    /** permite acelerar las oleadas en pruebas sin cambiar la campaña. */
+    public GameWorld(boolean graphics, float waveDuration) {
+        waves = WaveBuilder.campaign(waveDuration);
         cityMap = new CityMap();
         arena = new Rectangle(0f, 0f, CityMap.WORLD_SIZE, CityMap.WORLD_SIZE);
         player = new Player(CityMap.SPAWN + 64f, CityMap.SPAWN + 64f, arena);
@@ -78,6 +94,7 @@ public final class GameWorld implements Disposable {
         cityMap.breakGarbageNear(player.getX(), player.getY(), player.getRadius());
         elapsedTime += delta;
         pulse = Math.max(0f, pulse - delta);
+        updateSpawning(delta);
         for (Zombie zombie : zombies) {
             zombie.update(delta, player);
         }
@@ -112,6 +129,80 @@ public final class GameWorld implements Disposable {
                 damage(player, zombie.getType().damage);
             }
         }
+        advanceWave();
+    }
+
+    private void updateSpawning(float delta) {
+        if (wavesFinished) {
+            return;
+        }
+        waveTime += delta;
+        Wave wave = waves[waveIndex];
+        int due = waveTime >= wave.getDuration() ? wave.getTotal()
+                : Math.min(wave.getTotal(),
+                        1 + (int) (waveTime / wave.getDuration() * wave.getTotal()));
+        while (spawned < due && zombies.size() < MAX_ZOMBIES) {
+            if (!spawn(wave.typeAt(spawned))) {
+                break;
+            }
+            spawned++;
+        }
+    }
+
+    private void advanceWave() {
+        if (wavesFinished || !player.isAlive()) {
+            return;
+        }
+        Wave wave = waves[waveIndex];
+        if (waveTime >= wave.getDuration() && spawned == wave.getTotal()) {
+            if (waveIndex == waves.length - 1) {
+                wavesFinished = true;
+            } else {
+                waveIndex++;
+                waveTime = 0f;
+                spawned = 0;
+            }
+        }
+    }
+
+    private boolean spawn(ZombieType type) {
+        double phase = random.nextDouble() * Math.PI * 2;
+        // anillos locales: el borde de la ciudad queda demasiado lejos.
+        for (int attempt = 0; attempt < 96; attempt++) {
+            double angle = phase + (attempt % 32) * Math.PI * 2 / 32;
+            float distance = 320f + (attempt / 32) * 80f;
+            float x = player.getX() + (float) Math.cos(angle) * distance;
+            float y = player.getY() + (float) Math.sin(angle) * distance;
+            if (cityMap.collidesCircle(x, y, type.radius)) {
+                continue;
+            }
+            boolean occupied = false;
+            for (Zombie zombie : zombies) {
+                if (zombie.isAlive() && touch(x, y, type.radius,
+                        zombie.getX(), zombie.getY(), zombie.getRadius())) {
+                    occupied = true;
+                    break;
+                }
+            }
+            if (!occupied) {
+                zombies.add(new Zombie(x, y, type, arena));
+                return true;
+            }
+        }
+        // conserva el cupo y vuelve a intentar en la siguiente actualización.
+        return false;
+    }
+
+    public int getCurrentWave() {
+        return waveIndex + 1;
+    }
+
+    public float getWaveRemaining() {
+        return Math.max(0f, waves[waveIndex].getDuration() - waveTime);
+    }
+
+    public boolean areWavesFinished() {
+        return wavesFinished;
     }
 
     private static void damage(Damageable target, float amount) {
@@ -177,25 +268,10 @@ public final class GameWorld implements Disposable {
         pulse = 0f;
         zombies.clear();
         projectiles.clear();
-        ZombieType[] types = {ZombieType.NORMAL, ZombieType.NORMAL, ZombieType.TANK,
-                ZombieType.FAST, ZombieType.NORMAL};
-        // busca posiciones libres cerca del jugador, sin incorporar oleadas.
-        for (int i = 0; i < types.length; i++) {
-            boolean spawned = false;
-            for (int attempt = 0; attempt < 120 && !spawned; attempt++) {
-                double angle = i * Math.PI * 2 / types.length + attempt * 0.2;
-                float distance = 180f + (attempt / 30) * 40f;
-                float x = player.getX() + (float) Math.cos(angle) * distance;
-                float y = player.getY() + (float) Math.sin(angle) * distance;
-                if (!cityMap.collidesCircle(x, y, types[i].radius)) {
-                    zombies.add(new Zombie(x, y, types[i], arena));
-                    spawned = true;
-                }
-            }
-            if (!spawned) {
-                throw new IllegalStateException("No se encontro una posicion libre para el zombie");
-            }
-        }
+        waveIndex = 0;
+        waveTime = 0f;
+        spawned = 0;
+        wavesFinished = false;
     }
 
     public void draw(SpriteBatch batch, float viewLeft, float viewBottom,
