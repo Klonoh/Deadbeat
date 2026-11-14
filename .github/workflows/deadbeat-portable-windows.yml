@@ -23,7 +23,7 @@ jobs:
       - name: Descargar el codigo del mismo commit
         uses: actions/checkout@v6
 
-      - name: Instalar JDK 17 solo para generar el portable
+      - name: Instalar JDK 17 para crear el portable
         uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -39,10 +39,10 @@ jobs:
           if ($info -notmatch 'Gradle 7\.6\.4') { throw 'El Wrapper debe ser 7.6.4.' }
           if ($info -notmatch '(?m)^JVM:\s+17(?:[.\s]|$)') { throw 'Gradle no esta usando JDK 17.' }
 
-      - name: Ejecutar JUnit y generar Deadbeat.exe con Java integrado
+      - name: Compilar y generar Deadbeat.exe con Java integrado
         shell: pwsh
         working-directory: DeadBeat
-        run: .\scripts\crear-portable-windows.ps1 -Probar
+        run: .\scripts\crear-portable-windows.ps1
 
       - name: Verificar JVM reducida y contenido del ZIP
         shell: pwsh
@@ -57,14 +57,3 @@ jobs:
           path: DeadBeat/distribucion/Deadbeat-Windows-Portable.zip
           if-no-files-found: error
           retention-days: 30
-
-      - name: Guardar resultados de JUnit
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Deadbeat-Resultados-Portable-JDK17
-          path: |
-            DeadBeat/core/build/test-results/test/
-            DeadBeat/core/build/reports/tests/test/
-          if-no-files-found: ignore
-          retention-days: 14

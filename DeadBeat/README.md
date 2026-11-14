@@ -4,7 +4,7 @@ Videojuego de supervivencia 2D desarrollado en **Java 11**, **LibGDX** y **LWJGL
 
 ## Contenido del proyecto
 
-- `core/`: reglas, entidades, armas, movimiento, pantallas y pruebas JUnit.
+- `core/`: reglas del juego, entidades, armas, movimiento y pantallas.
 - `lwjgl3/`: lanzador para equipos de escritorio.
 - `assets/`: sprites, escenario, interfaz y audio utilizados durante la ejecución.
 - `docs/`: informe ejecutivo, diagramas UML e instrucciones de instalación.
@@ -19,7 +19,7 @@ La rúbrica de Programación Avanzada exige **Oracle JDK 11 u Oracle JDK 8**, ad
 
    ```powershell
    .\gradlew.bat --version
-   .\gradlew.bat clean :core:test :lwjgl3:classes --no-daemon
+   .\gradlew.bat clean :core:classes :lwjgl3:installDist --no-daemon
    .\gradlew.bat :lwjgl3:run --no-daemon
    ```
 
@@ -57,14 +57,14 @@ El empaquetado no modifica las clases Java ni su compatibilidad con JDK 11. Leer
 
 El informe documenta los requisitos GM-1 a GM-10, incluyendo los patrones **Singleton** (`AudioSettings`), **Strategy** (`MovementStrategy`), **Template Method** (`Weapon`) y **Builder** (`WaveBuilder`). Las imágenes de GM-1 son **maquetas**, no capturas de ejecución.
 
-## Control de calidad
+## Verificación de compilación
 
-Los flujos de integración continua validan la compilación y las pruebas del código con JDK 11 y JDK 17:
+Los flujos de integración continua comprueban que el proyecto compila con JDK 11 y JDK 17. El proceso portable verifica además el ejecutable, la JVM incorporada y los recursos del ZIP final.
 
 - [Académico JDK 11](https://github.com/Klonoh/Deadbeat/actions/workflows/deadbeat-academico-jdk11.yml)
 - [Windows portable](https://github.com/Klonoh/Deadbeat/actions/workflows/deadbeat-portable-windows.yml)
 
-Estas verificaciones automáticas no sustituyen la prueba manual con Oracle JDK 11 en Eclipse ni la apertura del ejecutable en otro equipo Windows.
+Estas verificaciones automáticas no sustituyen la comprobación manual con Oracle JDK 11 en Eclipse ni la apertura del ejecutable en otro equipo Windows.
 
 ## Derechos de distribución
 

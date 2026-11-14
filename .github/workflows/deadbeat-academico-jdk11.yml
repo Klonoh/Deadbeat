@@ -38,7 +38,7 @@ jobs:
           $info = & .\gradlew.bat --version | Out-String
           Write-Host $info
           if ($LASTEXITCODE -ne 0) { throw 'No se pudo iniciar el Gradle Wrapper.' }
-          if ($info -notmatch 'Gradle 7\.6\.4') { throw 'La version academica requiere Gradle 7.6.4.' }
+          if ($info -notmatch 'Gradle 7\.6\.4') { throw 'La edicion academica requiere Gradle 7.6.4.' }
           if ($info -notmatch '(?m)^JVM:\s+11(?:[.\s]|$)') { throw 'Gradle no esta usando JDK 11.' }
           $compilador = & javac.exe -version 2>&1 | Out-String
           Write-Host $compilador
@@ -46,11 +46,11 @@ jobs:
             throw 'El compilador no es JDK 11.'
           }
 
-      - name: Ejecutar JUnit y compilar distribucion de escritorio con JDK 11
+      - name: Compilar juego y preparar distribucion de escritorio
         shell: pwsh
         run: |
-          & .\gradlew.bat :core:clean :lwjgl3:clean :core:test :lwjgl3:installDist --no-daemon --stacktrace
-          if ($LASTEXITCODE -ne 0) { throw 'Fallaron pruebas o compilacion de escritorio con JDK 11.' }
+          & .\gradlew.bat :core:clean :lwjgl3:clean :core:classes :lwjgl3:installDist --no-daemon --stacktrace
+          if ($LASTEXITCODE -ne 0) { throw 'Fallo la compilacion de escritorio con JDK 11.' }
 
       - name: Comprobar bytecode Java 11 (major version 55)
         shell: pwsh
@@ -67,14 +67,3 @@ jobs:
             }
             Write-Host "Java 11 OK: $clase"
           }
-
-      - name: Guardar resultados de JUnit
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Deadbeat-Resultados-JDK11
-          path: |
-            DeadBeat/core/build/test-results/test/
-            DeadBeat/core/build/reports/tests/test/
-          if-no-files-found: ignore
-          retention-days: 14

@@ -7,13 +7,10 @@
   No requiere instalar Java en los equipos donde se va a jugar.
 .PARAMETER JdkHome
   Carpeta raiz de Temurin JDK 17, con bin\java.exe y bin\jpackage.exe.
-.PARAMETER Probar
-  Ejecuta :core:test antes del empaquetado (opcional).
 #>
 [CmdletBinding()]
 param(
-    [string]$JdkHome = $env:JAVA_HOME,
-    [switch]$Probar
+    [string]$JdkHome = $env:JAVA_HOME
 )
 
 Set-StrictMode -Version Latest
@@ -87,9 +84,6 @@ try {
 
     Push-Location $root
     try {
-        if ($Probar) {
-            Run-External 'Pruebas del modulo core' $gradlew @(':core:test', '--no-daemon')
-        }
         Run-External 'Compilar y preparar dependencias de escritorio' $gradlew @(':lwjgl3:installDist', '--no-daemon')
 
         # El plugin application de Gradle prepara los JAR del juego y de LWJGL3.

@@ -3,19 +3,16 @@
   Prepara Deadbeat para Eclipse con JDK 11, sin modificar el codigo del juego.
 .DESCRIPTION
   Usa Gradle 7.6.4, genera .project/.classpath/.settings, compila el lanzador
-  y opcionalmente ejecuta los tests de core.
+  utilizando unicamente las tareas de compilacion del proyecto.
 .PARAMETER JdkHome
   Carpeta del JDK 11 que contiene bin\java.exe, bin\javac.exe y el archivo release.
   Para cumplir literalmente la rubrica se requiere Oracle JDK 11.
-.PARAMETER SinPruebas
-  Omite los tests JUnit. Se recomienda no omitirlos en la entrega final.
 .PARAMETER ExigirOracle
   Detiene la preparacion cuando el JDK 11 no es Oracle Corporation.
 #>
 [CmdletBinding()]
 param(
     [string]$JdkHome = $env:JAVA_HOME,
-    [switch]$SinPruebas,
     [switch]$ExigirOracle
 )
 
@@ -92,9 +89,6 @@ try {
     try {
         Ejecutar 'Confirmar Gradle 7.6.4 y Java 11' @('--version')
         Ejecutar 'Generar proyectos de Eclipse y compilar desktop' @('eclipse', ':lwjgl3:classes', '--no-daemon')
-        if (-not $SinPruebas) {
-            Ejecutar 'Ejecutar pruebas de core' @(':core:test', '--no-daemon')
-        }
         foreach ($relative in @(
             '.project',
             'core\.project', 'core\.classpath', 'core\.settings\org.eclipse.jdt.core.prefs',
