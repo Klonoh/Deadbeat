@@ -19,6 +19,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import com.deadbeat.progression.Upgrade;
+import com.deadbeat.progression.UpgradeSelection;
 import com.deadbeat.progression.Wave;
 import com.deadbeat.progression.WaveBuilder;
 
@@ -29,6 +31,7 @@ public final class GameWorld implements Disposable {
     private static final float DRUMSTICKS_EFFECT_DURATION = 0.22f;
     private static final float DRUMSTICKS_EFFECT_SIZE = 156f;
     private static final float NOTE_PROJECTILE_SIZE = 34f;
+    private final UpgradeSelection upgrades = new UpgradeSelection();
     private final Wave[] waves;
     private final Random random = new Random();
     private int waveIndex;
@@ -94,7 +97,7 @@ public final class GameWorld implements Disposable {
     }
 
     public void update(float delta) {
-        if (!Float.isFinite(delta) || delta <= 0f || !player.isAlive()) {
+        if (!Float.isFinite(delta) || delta <= 0f || !player.isAlive() || isChoosingUpgrade()) {
             return;
         }
         player.update(delta, cityMap);
@@ -102,7 +105,7 @@ public final class GameWorld implements Disposable {
     }
 
     public void update(float delta, float horizontal, float vertical) {
-        if (!Float.isFinite(delta) || delta <= 0f || !player.isAlive()) {
+        if (!Float.isFinite(delta) || delta <= 0f || !player.isAlive() || isChoosingUpgrade()) {
             return;
         }
         player.update(delta, horizontal, vertical, cityMap);
@@ -182,10 +185,32 @@ public final class GameWorld implements Disposable {
             ExperienceOrb orb = orbs.get(i);
             // conserva los radios de recogida de la versión original.
             if (touch(player.getX(), player.getY(), 28f, orb.getX(), orb.getY(), 5f)) {
-                player.addExperience(orb.getAmount());
+                upgrades.award(player.addExperience(orb.getAmount()));
                 orbs.remove(i);
             }
         }
+    }
+
+    public boolean isChoosingUpgrade() {
+        return upgrades.getPending() > 0;
+    }
+
+    public List<Upgrade> getUpgradeChoices() {
+        return upgrades.getChoices();
+    }
+
+    public int getPendingUpgrades() {
+        return upgrades.getPending();
+    }
+
+    public void chooseUpgrade(int index) {
+        if (player.isAlive() && !(wavesFinished && zombies.isEmpty())) {
+            upgrades.choose(index, player);
+        }
+    }
+
+    public void cancelUpgradeSelection() {
+        upgrades.cancel();
     }
 
     public List<ExperienceOrb> getOrbs() {
@@ -322,6 +347,7 @@ public final class GameWorld implements Disposable {
     }
 
     public void reset() {
+        upgrades.reset();
         player.reset();
         cityMap.resetGarbage();
         elapsedTime = 0f;
