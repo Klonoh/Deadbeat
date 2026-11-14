@@ -3,6 +3,7 @@ package com.deadbeat.world;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Disposable;
 import com.deadbeat.entities.Player;
@@ -18,16 +19,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-import com.deadbeat.progression.Upgrade;
-import com.deadbeat.progression.UpgradeSelection;
 import com.deadbeat.progression.Wave;
 import com.deadbeat.progression.WaveBuilder;
 
-//integra el mapa de la ciudad con las entidades de combate.
+/** integra el mapa de la ciudad con las entidades de combate. */
 public final class GameWorld implements Disposable {
     // Mayor densidad simultánea sin dejar colas de spawn demasiado largas.
     private static final int MAX_ZOMBIES = 110;
-    private final UpgradeSelection upgrades = new UpgradeSelection();
+    private static final float DRUMSTICKS_EFFECT_DURATION = 0.22f;
+    private static final float DRUMSTICKS_EFFECT_SIZE = 156f;
+    private static final float NOTE_PROJECTILE_SIZE = 34f;
     private final Wave[] waves;
     private final Random random = new Random();
     private int waveIndex;
@@ -40,6 +41,10 @@ public final class GameWorld implements Disposable {
     private final Player player;
     private final PlayerSpriteRenderer playerSpriteRenderer;
     private final ZombieSpriteRenderer zombieSpriteRenderer;
+    private final Texture drumsticksAttackTexture;
+    private final Texture noteProjectileTexture;
+    private final TextureRegion[] drumsticksAttackFrames;
+    private final TextureRegion[] noteProjectileFrames;
     private final Rectangle arena;
     private final List<Zombie> zombies = new ArrayList<>();
     private final List<Projectile> projectiles = new ArrayList<>();
@@ -71,17 +76,25 @@ public final class GameWorld implements Disposable {
             cityRenderer = new CityRenderer(cityMap, pixel);
             playerSpriteRenderer = new PlayerSpriteRenderer();
             zombieSpriteRenderer = new ZombieSpriteRenderer();
+            drumsticksAttackTexture = new Texture("sprites/drumsticks_spin_attack.png");
+            noteProjectileTexture = new Texture("sprites/guitar_note_projectile.png");
+            drumsticksAttackFrames = splitHorizontalStrip(drumsticksAttackTexture);
+            noteProjectileFrames = splitHorizontalStrip(noteProjectileTexture);
         } else {
             pixel = null;
             cityRenderer = null;
             playerSpriteRenderer = null;
             zombieSpriteRenderer = null;
+            drumsticksAttackTexture = null;
+            noteProjectileTexture = null;
+            drumsticksAttackFrames = null;
+            noteProjectileFrames = null;
         }
         reset();
     }
 
     public void update(float delta) {
-        if (!Float.isFinite(delta) || delta <= 0f || !player.isAlive() || isChoosingUpgrade()) {
+        if (!Float.isFinite(delta) || delta <= 0f || !player.isAlive()) {
             return;
         }
         player.update(delta, cityMap);
@@ -89,7 +102,7 @@ public final class GameWorld implements Disposable {
     }
 
     public void update(float delta, float horizontal, float vertical) {
-        if (!Float.isFinite(delta) || delta <= 0f || !player.isAlive() || isChoosingUpgrade()) {
+        if (!Float.isFinite(delta) || delta <= 0f || !player.isAlive()) {
             return;
         }
         player.update(delta, horizontal, vertical, cityMap);
@@ -169,32 +182,10 @@ public final class GameWorld implements Disposable {
             ExperienceOrb orb = orbs.get(i);
             // conserva los radios de recogida de la versión original.
             if (touch(player.getX(), player.getY(), 28f, orb.getX(), orb.getY(), 5f)) {
-                upgrades.award(player.addExperience(orb.getAmount()));
+                player.addExperience(orb.getAmount());
                 orbs.remove(i);
             }
         }
-    }
-
-    public boolean isChoosingUpgrade() {
-        return upgrades.getPending() > 0;
-    }
-
-    public List<Upgrade> getUpgradeChoices() {
-        return upgrades.getChoices();
-    }
-
-    public int getPendingUpgrades() {
-        return upgrades.getPending();
-    }
-
-    public void chooseUpgrade(int index) {
-        if (player.isAlive() && !(wavesFinished && zombies.isEmpty())) {
-            upgrades.choose(index, player);
-        }
-    }
-
-    public void cancelUpgradeSelection() {
-        upgrades.cancel();
     }
 
     public List<ExperienceOrb> getOrbs() {
@@ -317,7 +308,7 @@ public final class GameWorld implements Disposable {
             }
         }
         if (hit) {
-            pulse = 0.16f;
+            pulse = DRUMSTICKS_EFFECT_DURATION;
         }
         return hit;
     }
@@ -331,7 +322,6 @@ public final class GameWorld implements Disposable {
     }
 
     public void reset() {
-        upgrades.reset();
         player.reset();
         cityMap.resetGarbage();
         elapsedTime = 0f;
@@ -377,18 +367,57 @@ public final class GameWorld implements Disposable {
                     3f, 0.95f, 0.2f, 0.4f);
         }
         for (Projectile projectile : projectiles) {
-            rect(batch, projectile.getX() - 5f, projectile.getY() - 3f,
-                    10f, 6f, 1f, 0.2f, 0.7f);
+            drawGuitarProjectile(batch, projectile);
         }
         if (pulse > 0f) {
+            drawDrumsticksSpin(batch);
+        }
+        drawPlayer(batch);
+        batch.setColor(1f, 1f, 1f, 1f);
+    }
+
+    private void drawGuitarProjectile(SpriteBatch batch, Projectile projectile) {
+        if (noteProjectileFrames == null || noteProjectileFrames.length == 0) {
+            rect(batch, projectile.getX() - 5f, projectile.getY() - 3f,
+                    10f, 6f, 1f, 0.2f, 0.7f);
+            return;
+        }
+        TextureRegion frame = noteProjectileFrames[((int) (elapsedTime * 11f))
+                % noteProjectileFrames.length];
+        float bob = (float) Math.sin(elapsedTime * 9f
+                + projectile.getX() * 0.017f + projectile.getY() * 0.011f) * 1.4f;
+        float shadowW = NOTE_PROJECTILE_SIZE * 0.52f;
+        rect(batch, projectile.getX() - shadowW * 0.5f,
+                projectile.getY() - NOTE_PROJECTILE_SIZE * 0.34f,
+                shadowW, 4f, 0.07f, 0.07f, 0.09f);
+        batch.setColor(1f, 1f, 1f, 1f);
+        batch.draw(frame,
+                projectile.getX() - NOTE_PROJECTILE_SIZE * 0.5f,
+                projectile.getY() - NOTE_PROJECTILE_SIZE * 0.5f + bob,
+                NOTE_PROJECTILE_SIZE,
+                NOTE_PROJECTILE_SIZE);
+    }
+
+    private void drawDrumsticksSpin(SpriteBatch batch) {
+        if (drumsticksAttackFrames == null || drumsticksAttackFrames.length == 0) {
             for (int i = 0; i < 32; i++) {
                 double angle = i * Math.PI * 2 / 32;
                 rect(batch, player.getX() + (float) Math.cos(angle) * 65f - 2f,
                         player.getY() + (float) Math.sin(angle) * 65f - 2f,
                         4f, 4f, 0.9f, 1f, 0.3f);
             }
+            return;
         }
-        drawPlayer(batch);
+        float normalized = 1f - pulse / DRUMSTICKS_EFFECT_DURATION;
+        int frameIndex = Math.min(drumsticksAttackFrames.length - 1,
+                Math.max(0, (int) (normalized * drumsticksAttackFrames.length)));
+        float alpha = Math.min(1f, Math.max(0f, pulse / DRUMSTICKS_EFFECT_DURATION));
+        batch.setColor(1f, 1f, 1f, alpha);
+        batch.draw(drumsticksAttackFrames[frameIndex],
+                player.getX() - DRUMSTICKS_EFFECT_SIZE * 0.5f,
+                player.getY() - DRUMSTICKS_EFFECT_SIZE * 0.5f,
+                DRUMSTICKS_EFFECT_SIZE,
+                DRUMSTICKS_EFFECT_SIZE);
         batch.setColor(1f, 1f, 1f, 1f);
     }
 
@@ -403,6 +432,16 @@ public final class GameWorld implements Disposable {
                       float red, float green, float blue) {
         batch.setColor(red, green, blue, 1f);
         batch.draw(pixel, x, y, w, h);
+    }
+
+    private static TextureRegion[] splitHorizontalStrip(Texture texture) {
+        int frameSize = texture.getHeight();
+        int columns = Math.max(1, texture.getWidth() / frameSize);
+        TextureRegion[] frames = new TextureRegion[columns];
+        for (int i = 0; i < columns; i++) {
+            frames[i] = new TextureRegion(texture, i * frameSize, 0, frameSize, frameSize);
+        }
+        return frames;
     }
 
     public Player getPlayer() {
@@ -427,6 +466,12 @@ public final class GameWorld implements Disposable {
         }
         if (cityRenderer != null) {
             cityRenderer.dispose();
+        }
+        if (drumsticksAttackTexture != null) {
+            drumsticksAttackTexture.dispose();
+        }
+        if (noteProjectileTexture != null) {
+            noteProjectileTexture.dispose();
         }
         if (pixel != null) {
             pixel.dispose();

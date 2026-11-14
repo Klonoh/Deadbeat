@@ -54,7 +54,7 @@ try {
     Asegurar $match.Success 'No se pudo determinar JAVA_VERSION en runtime/release.'
     $version = $match.Groups[1].Value
     Asegurar ($version -match '^17(?:[.\+\-]|$)') "Se esperaba Java 17 incluido, detectado: $version"
-    Write-Host "Runtime Java $version: OK (java.dll y jvm.dll encontrados)" -ForegroundColor Green
+    Write-Host "Runtime Java ${version}: OK (java.dll y jvm.dll encontrados)" -ForegroundColor Green
 
     $jars = @(Get-ChildItem -LiteralPath $app -File -Filter '*.jar')
     $lwjgl = @($jars | Where-Object { $_.Name -match '^lwjgl3(?:-|\.jar)' } | Select-Object -First 1)
