@@ -1,0 +1,27 @@
+@startuml
+title GM-9 — Builder
+class WaveBuilder {
+ - duration: float
+ - normal: int
+ - fast: int
+ - tank: int
+ + duration(float): WaveBuilder
+ + normal(int): WaveBuilder
+ + fast(int): WaveBuilder
+ + tank(int): WaveBuilder
+ + build(): Wave
+ + {static} campaign(float): Wave[]
+}
+class Wave {
+ - duration: float
+ - normal: int
+ - fast: int
+ - tank: int
+ + getTotal(): int
+ + typeAt(int): ZombieType
+}
+class GameWorld
+WaveBuilder ..> Wave : construye
+GameWorld --> Wave : usa cinco
+GameWorld ..> WaveBuilder : invoca campaign()
+@enduml

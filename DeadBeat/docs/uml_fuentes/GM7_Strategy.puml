@@ -1,0 +1,18 @@
+@startuml
+title GM-7 — Strategy
+interface MovementStrategy {
+ + move(Zombie, Player, float): void
+}
+class ChaseMovement
+class ZigzagMovement
+class Zombie {
+ - strategy: MovementStrategy
+ + setMovementStrategy(MovementStrategy): void
+ + update(float, Player): void
+}
+class Player
+MovementStrategy <|.. ChaseMovement
+MovementStrategy <|.. ZigzagMovement
+Zombie --> MovementStrategy : delega movimiento
+MovementStrategy ..> Player : objetivo
+@enduml

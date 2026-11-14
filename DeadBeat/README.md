@@ -1,101 +1,73 @@
-# DEADBEAT — 0.5.3: Props corregidos, vallas y bolsas interactivas
+# DEADBEAT
 
-**Base:** Deadbeat 0.5.2 (ZIP verificado disponible). Java 11, LibGDX 1.14.2, Gradle Wrapper 7.6.4.
+Juego de supervivencia 2D desarrollado con Java, LibGDX y LWJGL3. Un músico punk debe sobrevivir cinco oleadas de zombis mediante ataques automáticos de guitarra eléctrica y baquetas, recoger experiencia y mejorar sus habilidades.
 
-## Nuevas funciones
+> **Estado de referencia:** commit [`a2f7d4b`](https://github.com/Klonoh/Deadbeat/commit/a2f7d4b1fddcd0d48232e6750be37c6d63d85b02). En este commit finalizaron correctamente los workflows de compatibilidad JDK 11 y empaquetado portable Windows JDK 17. Estos resultados no sustituyen la ejecución manual.
 
-- Se corrigieron los PNG extraídos de los atlas (`fence`, `crate`, `pallet`, `barrier`, `concrete_barricade`, `planter`, `garbage`, `graffiti_wall`, `tent`, `dumpster`, `barrels`). Ya no contienen piezas de recursos vecinos.
-- Las vallas ahora son obstáculos físicos del mapa: no pueden atravesarse con el jugador. Se distribuyen en zonas industriales, estacionamientos y campamentos.
-- Las bolsas de basura se rompen automáticamente cuando el jugador pasa por ellas. No detienen el movimiento; después de romperse se muestran con **una de tres variantes PNG** según su ubicación.
-- El estado de una bolsa rota persiste al salir del bloque y regresar. `R` reinicia la partida y restaura las bolsas intactas.
-- El HUD muestra cuántas bolsas se han roto.
+## Características actuales
 
-## Ejecutar en Windows
+- Ciudad de desplazamiento libre, cámara centrada y colisiones con edificios y objetos.
+- Zombis normales, rápidos y tanque; movimientos de persecución y zigzag mediante Strategy.
+- Ataques automáticos con guitarra (proyectiles con sprite animado) y baquetas (efecto de giro).
+- Cinco oleadas por tiempo, con 24, 34, 48, 64 y 82 enemigos configurados; después de la quinta debe eliminarse a los zombis restantes para ganar.
+- Experiencia, niveles y selección de mejoras; pantallas de menú, pausa, victoria y derrota.
+- Música y volumen compartidos entre pantallas; ajustes centralizados en `AudioSettings` (Singleton).
+- Herencia `Weapon` con `ElectricGuitar` y `Drumsticks` (Template Method), y creación de oleadas con `WaveBuilder` (Builder).
 
-En PowerShell, dentro de esta carpeta:
+## Dos distribuciones, un mismo código
 
-```powershell
-.\gradlew.bat :lwjgl3:run
-```
+| Edición | Herramientas para preparar | Entregable | Destinatario |
+|---|---|---|---|
+| Académica | **Oracle JDK 11**, Gradle 7.6.4 y Eclipse | Proyecto fuente, recursos, documentación e informe | Evaluación según rúbrica GM |
+| Portable Windows | JDK 17 en Windows y `jpackage` | `distribucion/Deadbeat-Windows-Portable.zip` | Jugadores sin Java instalado |
 
-## Prueba manual recomendada
+Los módulos `core` y `lwjgl3` compilan con `options.release = 11`. La construcción de la edición portable se realiza en JDK 17 para incluir un runtime reducido dentro de `Deadbeat.exe`. **No hay dos versiones distintas del código Java.**
 
-1. Camina hasta un campamento, un estacionamiento o una nave industrial y choca contra una valla. No debes poder atravesarla.
-2. Comprueba que la valla y las cajas ya no tienen postes ni pedazos laterales duplicados.
-3. Camina encima de una bolsa de basura; debe transformarse inmediatamente en una pila abierta o rasgada.
-4. Pasa nuevamente sobre la misma bolsa: no debe regenerarse ni volver a aumentar el contador.
-5. Aléjate varias pantallas y vuelve. La bolsa seguirá rota, incluso si el sector se regeneró en la caché.
-6. Encuentra más bolsas y comprueba que aparecen tres roturas visuales distintas.
-7. Pulsa `R`: las bolsas deben aparecer intactas nuevamente.
+## Abrir y ejecutar la edición académica
 
-**Controles:** WASD o flechas para moverte, H para probar daño, R para reiniciar y ESC para salir.
+1. Instalar **Oracle JDK 11** para la comprobación literal de la rúbrica. Eclipse es el IDE de entrega; en desarrollo también puede comprobarse con otra distribución de JDK 11.
+2. Situarse en `DeadBeat/`, establecer `JAVA_HOME` a la carpeta raíz del JDK 11 y ejecutar:
 
-Detalles técnicos y archivos: `docs/PROPS_0_5_3.md`.
+   ```powershell
+   .\gradlew.bat --version
+   .\gradlew.bat clean :core:test :lwjgl3:classes --no-daemon
+   .\gradlew.bat :lwjgl3:run
+   ```
 
-> Esta versión fue preparada desde el ZIP 0.5.2, no desde la rama actual de `Klonoh/Deadbeat`, porque la consulta de GitHub no devolvió el contenido. No reemplaces cambios más recientes del equipo sin comparar primero.
+3. Para preparar Eclipse, ejecutar `Preparar-Eclipse.bat` o `scripts/preparar-eclipse.ps1` conforme a [`docs/INSTALACION_ACADEMICA.md`](docs/INSTALACION_ACADEMICA.md).
+4. Importar los proyectos generados `Deadbeat`, `Deadbeat-core` y `Deadbeat-lwjgl3`, y utilizar `Deadbeat-Eclipse.launch` con el directorio de recursos definido.
 
----
+**Importante:** el workflow académico automatizado utiliza Temurin 11. La prueba final con Oracle JDK 11 debe efectuarse en el equipo del grupo.
 
-## Actualización 0.5.2: texturas ancladas al mundo
-Se eliminó la modificación de UV en función de la cámara. El suelo se dibuja
-sobre baldosas fijas de 64 × 64 unidades de mundo. Ver `docs/WORLD_0_5_2_TEXTURE_FIX.md`.
+## Generar la edición portable
 
-# Deadbeat 0.5.1 — Reparación de baldosas y estabilidad visual
+En Windows, con **JDK 17** completo (incluido `jpackage`), ejecutar `Crear-portable-Windows.bat` dentro de `DeadBeat/`. También puede generarse desde **GitHub Actions → Deadbeat - Windows portable → Run workflow**. La carpeta comprimida incluye `Deadbeat.exe`, `runtime/` y `app/` y debe extraerse completa.
 
-Esta versión parte de 0.5, conserva su ciudad, sprites y colisiones, y corrige defectos de los pavimentos y la cámara.
-
-**Cambios:** los materiales de suelo son PNGs repetibles independientes en `assets/world2/surfaces`; las avenidas y calles se dibujan como geometrías continuas, y las líneas viales se trazan por eje de carretera, sin depender de tiles. La cámara y el protagonista se alinean a píxeles enteros (solo la representación gráfica: la física conserva decimales). Se ajustó la cadencia visual de pasos.
-
-Para Windows: `gradlew.bat :lwjgl3:run`. Pruebas: `gradlew.bat :core:test`.
-
-No se modificaron las colisiones ni las posiciones de edificios, de modo que la ciudad y las calles conservan su navegabilidad.
-
-# DEADBEAT — Ciudad Punk 0.5
-
-Prototipo LibGDX en Java 11: personaje punk animado en un mundo urbano postapocalíptico generado de forma determinista. Esta entrega actualiza el motor de escenarios del prototipo 0.4.
-
-## Ejecutar (Windows)
-
-1. Extraer el ZIP y entrar en la carpeta principal del proyecto.
-2. Abrir PowerShell y ejecutar:
-
-```powershell
-.\gradlew.bat :lwjgl3:run
-```
-
-En Linux/macOS: `./gradlew :lwjgl3:run`. La primera ejecución requiere conexión a internet para las dependencias Gradle/LibGDX. JDK recomendado: Java 11. El wrapper conserva Gradle 7.6.4.
+Ver [`docs/PORTABLE_WINDOWS.md`](docs/PORTABLE_WINDOWS.md), [`docs/FASE3_VALIDACION_PORTABLE.md`](docs/FASE3_VALIDACION_PORTABLE.md) y [`docs/FASE4_CI_DOBLE.md`](docs/FASE4_CI_DOBLE.md).
 
 ## Controles
 
-- `W A S D` o flechas: caminar y explorar (cámara centrada).
-- `H`: recibir 20 puntos de daño para pruebas.
-- `R`: regresar al punto inicial y restaurar la vida.
-- `ESC`: salir.
+| Acción | Control |
+|---|---|
+| Caminar | WASD o flechas |
+| Pausa / reanudar | ESC |
+| Reiniciar | R |
+| Seleccionar una mejora | 1, 2, 3 o clic |
+| Pista musical anterior / siguiente | Q / E |
+| Recibir daño de prueba | H (depuración) |
+| Menú y resultados | Teclado o ratón según la pantalla |
 
-## Esta versión
+## Documentación para la rúbrica
 
-- Calles principales continuas en dos ejes, con anchos variables y pasos peatonales.
-- Manzanas rectangulares irregulares, edificios de diferentes tamaños, pasajes y lotes abiertos.
-- 6 sectores reproducibles: tiendas, viviendas, industria, estacionamientos, campamentos y callejones.
-- PNG separados para suelos, edificios, fachadas, chatarra y mobiliario urbano.
-- Los edificios, coches y obstáculos grandes tienen colisión circular-contra-rectángulo.
-- Solo se dibuja lo que está dentro del rectángulo visible de la cámara (con margen); mapa y bloques cargados a demanda.
-- Se mantienen el protagonista, su sprite animado, vida, invulnerabilidad, teclado y cámara de 0.4.
+- **Informe actualizado (GM-1 a GM-10):** [`docs/REPORTE_EJECUTIVO_GM_ACTUALIZADO.pdf`](docs/REPORTE_EJECUTIVO_GM_ACTUALIZADO.pdf) y versiones [DOCX](docs/REPORTE_EJECUTIVO_GM_ACTUALIZADO.docx) / [Markdown](docs/REPORTE_EJECUTIVO_GM_ACTUALIZADO.md).
+- **Diagramas de clases y patrones:** `docs/figuras/` y fuentes editables `docs/uml_fuentes/`.
+- **Guía de la Fase 5:** [`docs/FASE5_DOCUMENTACION.md`](docs/FASE5_DOCUMENTACION.md).
+- **Anexos históricos conservados en la raíz del repositorio:** `Anexo_A_GM3_UML_Completo.pdf`, `Anexo_B_GM6_Singleton.pdf.pdf` y `REPORTE EJECUTIVO DE CUMPLIMIENTO.md`. Verificar concordancia antes de unirlos con el informe actual.
 
-## Archivos importantes
+## Historial técnico
 
-- `core/src/main/java/com/deadbeat/world/CityMap.java`: calles, parcelas, edificios, distritos y colisiones.
-- `core/src/main/java/com/deadbeat/world/CityRenderer.java`: dibujo PNG del suelo, fachadas, objetos y aceras.
-- `core/src/main/java/com/deadbeat/world/GameWorld.java`: integra mundo y jugador.
-- `core/src/main/java/com/deadbeat/screens/GameScreen.java`: cámara y HUD.
-- `assets/world2/`: PNG utilizados por el mundo. Los materiales del suelo están en `surfaces/` y se repiten sin costuras; ya no se usa el antiguo atlas `ground.png`.
-- `assets/sprites/player_walk.png`: sprite animado del jugador (sin cambios de animación).
-- `docs/WORLD_0_5.md`: guía técnica, parámetros y pruebas.
+Las mejoras del escenario de las versiones 0.4–0.5.3 se explican en `docs/WORLD_0_4.md`, `docs/WORLD_0_5.md`, `docs/WORLD_0_5_1_FIXES.md`, `docs/WORLD_0_5_2_TEXTURE_FIX.md` y `docs/PROPS_0_5_3.md`. Estos documentos describen iteraciones anteriores y no necesariamente el estado completo de la rama `main`.
 
-## Nota sobre el repositorio
+## Aviso de distribución
 
-El código base para este ZIP es la copia verificable de Deadbeat 0.4 proporcionada en la conversación. No se modificó directamente `Klonoh/Deadbeat`, porque no fue posible obtener la rama actual desde GitHub. Antes de fusionar, comparar las diferencias con los cambios más recientes del equipo.
-
-## Verificación
-
-Los archivos Java se compilaron con Java 11 mediante dobles de prueba de las APIs de LibGDX y se superaron 29 pruebas de lógica. La compilación con dependencias oficiales y el renderizado real de LWJGL3 quedan pendientes de ejecución local porque este entorno no pudo descargar Gradle.
+El repositorio incorpora música de terceros. Deben comprobarse los derechos de las pistas o sustituirlas por recursos autorizados antes de distribuir públicamente el juego portable.
