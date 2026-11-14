@@ -1,8 +1,26 @@
+plugins {
+    // Genera proyectos Eclipse (.project, .classpath y configuracion JDT)
+    // sin alterar las tareas de compilacion ni el empaquetado portable.
+    id 'eclipse'
+}
+
 allprojects {
     group = 'com.deadbeat'
     version = '0.5.0'
 
     repositories {
         mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'eclipse'
+
+    // Nombres unicos para importar los modulos sin colisionar con otros
+    // proyectos genericos llamados 'core' o 'lwjgl3' en el workspace.
+    eclipse {
+        project {
+            name = "Deadbeat-${project.name}"
+        }
     }
 }
