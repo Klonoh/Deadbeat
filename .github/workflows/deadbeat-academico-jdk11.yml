@@ -1,0 +1,80 @@
+name: Deadbeat - Academico JDK 11
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'DeadBeat/**'
+      - '.github/workflows/deadbeat-academico-jdk11.yml'
+  pull_request:
+    paths:
+      - 'DeadBeat/**'
+      - '.github/workflows/deadbeat-academico-jdk11.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verificar-jdk11:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: DeadBeat
+    steps:
+      - name: Descargar el codigo del mismo commit
+        uses: actions/checkout@v6
+
+      - name: Instalar JDK 11 para comprobar compatibilidad
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      - name: Comprobar JVM 11 y Gradle 7.6.4
+        shell: pwsh
+        run: |
+          $info = & .\gradlew.bat --version | Out-String
+          Write-Host $info
+          if ($LASTEXITCODE -ne 0) { throw 'No se pudo iniciar el Gradle Wrapper.' }
+          if ($info -notmatch 'Gradle 7\.6\.4') { throw 'La version academica requiere Gradle 7.6.4.' }
+          if ($info -notmatch '(?m)^JVM:\s+11(?:[.\s]|$)') { throw 'Gradle no esta usando JDK 11.' }
+          $compilador = & javac.exe -version 2>&1 | Out-String
+          Write-Host $compilador
+          if ($LASTEXITCODE -ne 0 -or $compilador -notmatch 'javac 11(?:[.\s]|$)') {
+            throw 'El compilador no es JDK 11.'
+          }
+
+      - name: Ejecutar JUnit y compilar distribucion de escritorio con JDK 11
+        shell: pwsh
+        run: |
+          & .\gradlew.bat :core:clean :lwjgl3:clean :core:test :lwjgl3:installDist --no-daemon --stacktrace
+          if ($LASTEXITCODE -ne 0) { throw 'Fallaron pruebas o compilacion de escritorio con JDK 11.' }
+
+      - name: Comprobar bytecode Java 11 (major version 55)
+        shell: pwsh
+        run: |
+          $clases = @(
+            'core\build\classes\java\main\com\deadbeat\DeadbeatGame.class',
+            'lwjgl3\build\classes\java\main\com\deadbeat\lwjgl3\Lwjgl3Launcher.class'
+          )
+          foreach ($clase in $clases) {
+            if (-not (Test-Path -LiteralPath $clase -PathType Leaf)) { throw "Falta la clase compilada: $clase" }
+            $info = & javap.exe -verbose $clase | Out-String
+            if ($LASTEXITCODE -ne 0 -or $info -notmatch 'major version:\s*55') {
+              throw "El bytecode no corresponde a Java 11: $clase"
+            }
+            Write-Host "Java 11 OK: $clase"
+          }
+
+      - name: Guardar resultados de JUnit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Deadbeat-Resultados-JDK11
+          path: |
+            DeadBeat/core/build/test-results/test/
+            DeadBeat/core/build/reports/tests/test/
+          if-no-files-found: ignore
+          retention-days: 14

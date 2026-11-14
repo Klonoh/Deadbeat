@@ -2,6 +2,15 @@ name: Deadbeat - Windows portable
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'DeadBeat/**'
+      - '.github/workflows/deadbeat-portable-windows.yml'
+  pull_request:
+    paths:
+      - 'DeadBeat/**'
+      - '.github/workflows/deadbeat-portable-windows.yml'
 
 permissions:
   contents: read
@@ -9,43 +18,53 @@ permissions:
 jobs:
   portable-windows:
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
     steps:
-      - name: Descargar repositorio
+      - name: Descargar el codigo del mismo commit
         uses: actions/checkout@v6
 
-      - name: Instalar JDK 17 para construir
+      - name: Instalar JDK 17 solo para generar el portable
         uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Verificar Gradle 7.6.4 ejecutado con JDK 17
+      - name: Verificar Gradle 7.6.4 con JVM 17
         shell: pwsh
         working-directory: DeadBeat
         run: |
-          $resultado = & .\gradlew.bat --version | Out-String
-          Write-Host $resultado
-          if ($LASTEXITCODE -ne 0) { throw 'No se pudo iniciar el Gradle Wrapper.' }
-          if ($resultado -notmatch 'Gradle 7\.6\.4') { throw 'Este flujo requiere Gradle 7.6.4.' }
-          if ($resultado -notmatch '(?m)^JVM:\s+17(?:[.\s]|$)') {
-            throw 'El Gradle Wrapper no esta ejecutandose con JDK 17.'
-          }
+          $info = & .\gradlew.bat --version | Out-String
+          Write-Host $info
+          if ($LASTEXITCODE -ne 0) { throw 'No se pudo iniciar Gradle.' }
+          if ($info -notmatch 'Gradle 7\.6\.4') { throw 'El Wrapper debe ser 7.6.4.' }
+          if ($info -notmatch '(?m)^JVM:\s+17(?:[.\s]|$)') { throw 'Gradle no esta usando JDK 17.' }
 
-      - name: Generar Deadbeat.exe y Java integrado
+      - name: Ejecutar JUnit y generar Deadbeat.exe con Java integrado
         shell: pwsh
         working-directory: DeadBeat
-        run: .\scripts\crear-portable-windows.ps1
+        run: .\scripts\crear-portable-windows.ps1 -Probar
 
-      - name: Verificar ejecutable, Java y recursos empaquetados
+      - name: Verificar JVM reducida y contenido del ZIP
         shell: pwsh
         working-directory: DeadBeat
         run: .\scripts\verificar-portable-windows.ps1
 
-      - name: Publicar ZIP portable
+      - name: Publicar ZIP portable (solo main o ejecucion manual)
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: Deadbeat-Windows-Portable
           path: DeadBeat/distribucion/Deadbeat-Windows-Portable.zip
           if-no-files-found: error
           retention-days: 30
+
+      - name: Guardar resultados de JUnit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Deadbeat-Resultados-Portable-JDK17
+          path: |
+            DeadBeat/core/build/test-results/test/
+            DeadBeat/core/build/reports/tests/test/
+          if-no-files-found: ignore
+          retention-days: 14
