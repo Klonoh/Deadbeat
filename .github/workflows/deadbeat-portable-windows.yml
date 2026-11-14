@@ -9,21 +9,38 @@ permissions:
 jobs:
   portable-windows:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Descargar repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Instalar JDK 17 para construir
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Construir EXE con Java integrado
+      - name: Verificar Gradle 7.6.4 ejecutado con JDK 17
+        shell: pwsh
+        working-directory: DeadBeat
+        run: |
+          $resultado = & .\gradlew.bat --version | Out-String
+          Write-Host $resultado
+          if ($LASTEXITCODE -ne 0) { throw 'No se pudo iniciar el Gradle Wrapper.' }
+          if ($resultado -notmatch 'Gradle 7\.6\.4') { throw 'Este flujo requiere Gradle 7.6.4.' }
+          if ($resultado -notmatch '(?m)^JVM:\s+17(?:[.\s]|$)') {
+            throw 'El Gradle Wrapper no esta ejecutandose con JDK 17.'
+          }
+
+      - name: Generar Deadbeat.exe y Java integrado
         shell: pwsh
         working-directory: DeadBeat
         run: .\scripts\crear-portable-windows.ps1
+
+      - name: Verificar ejecutable, Java y recursos empaquetados
+        shell: pwsh
+        working-directory: DeadBeat
+        run: .\scripts\verificar-portable-windows.ps1
 
       - name: Publicar ZIP portable
         uses: actions/upload-artifact@v4
