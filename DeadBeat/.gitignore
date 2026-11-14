@@ -1,3 +1,4 @@
+# Archivos temporales de Gradle y de los IDE
 .gradle/
 **/build/
 **/bin/
@@ -8,5 +9,12 @@
 .project
 .settings/
 .DS_Store
-.log
+
+# Archivos compilados, registros y respaldos locales
+*.class
+*.bak
+*.log
+
+# El paquete portable se genera, no se versiona
 /distribucion/
+/Deadbeat.exe

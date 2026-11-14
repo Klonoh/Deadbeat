@@ -1,7 +1,7 @@
 # DEADBEAT - Versión portable Windows (EXE con Java integrado)
 
-Esta automatización fue adaptada al repositorio `Klonoh/Deadbeat` y a su
-estructura real: `DeadBeat/core`, `DeadBeat/lwjgl3`, `DeadBeat/assets`.
+Esta guía describe cómo generar y utilizar el juego portable desde la estructura
+`DeadBeat/core`, `DeadBeat/lwjgl3` y `DeadBeat/assets`.
 
 ## Resultado
 
@@ -77,17 +77,16 @@ en la **raíz del repositorio** (junto a la carpeta `DeadBeat/`).
 - Debido a restricciones del sistema operativo, el EXE Windows **no puede
   compilarse con jpackage desde Linux o macOS**; usa una PC Windows o el flujo
   de GitHub Actions incluido.
-- Esta automatización no modifica código Java ni reemplaza el `Deadbeat.exe`
-  antiguo de 3 KB que existe en la raíz de `DeadBeat`. El EXE nuevo está
-  únicamente en la carpeta `distribucion/Deadbeat/`.
+- Esta automatización no modifica código Java. El ejecutable creado está
+  en `distribucion/Deadbeat/Deadbeat.exe`.
 - **Derechos de la banda sonora:** el repositorio incluye canciones de
   terceros. Comprueba licencias o permisos antes de publicar o distribuir
   copias con esa música.
 
 ## Diagnóstico
 
-**`Gradle requires JVM 17 or later`**: configura Temurin JDK 17 al crear
-el paquete. El script fuerza el `JAVA_HOME` correcto durante la compilación.
+**Java incorrecto al empaquetar**: selecciona Temurin JDK 17. El script
+configura `JAVA_HOME` para la sesión de compilación sin alterar el JDK de Eclipse.
 
 **`No se encontro JDK`**: pasa `-JdkHome` apuntando al directorio del JDK.
 

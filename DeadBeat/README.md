@@ -1,73 +1,71 @@
 # DEADBEAT
 
-Juego de supervivencia 2D desarrollado con Java, LibGDX y LWJGL3. Un músico punk debe sobrevivir cinco oleadas de zombis mediante ataques automáticos de guitarra eléctrica y baquetas, recoger experiencia y mejorar sus habilidades.
+Videojuego de supervivencia 2D desarrollado en **Java 11**, **LibGDX** y **LWJGL3**. El protagonista es un músico punk que combate zombis con una guitarra eléctrica y unas baquetas, obtiene experiencia, selecciona mejoras y debe superar cinco oleadas. La victoria requiere terminar la quinta oleada y eliminar a los enemigos restantes.
 
-> **Estado de referencia:** commit [`a2f7d4b`](https://github.com/Klonoh/Deadbeat/commit/a2f7d4b1fddcd0d48232e6750be37c6d63d85b02). En este commit finalizaron correctamente los workflows de compatibilidad JDK 11 y empaquetado portable Windows JDK 17. Estos resultados no sustituyen la ejecución manual.
+## Contenido del proyecto
 
-## Características actuales
+- `core/`: reglas, entidades, armas, movimiento, pantallas y pruebas JUnit.
+- `lwjgl3/`: lanzador para equipos de escritorio.
+- `assets/`: sprites, escenario, interfaz y audio utilizados durante la ejecución.
+- `docs/`: informe ejecutivo, diagramas UML e instrucciones de instalación.
+- `gradle/`, `gradlew` y `gradlew.bat`: Gradle Wrapper 7.6.4.
 
-- Ciudad de desplazamiento libre, cámara centrada y colisiones con edificios y objetos.
-- Zombis normales, rápidos y tanque; movimientos de persecución y zigzag mediante Strategy.
-- Ataques automáticos con guitarra (proyectiles con sprite animado) y baquetas (efecto de giro).
-- Cinco oleadas por tiempo, con 24, 34, 48, 64 y 82 enemigos configurados; después de la quinta debe eliminarse a los zombis restantes para ganar.
-- Experiencia, niveles y selección de mejoras; pantallas de menú, pausa, victoria y derrota.
-- Música y volumen compartidos entre pantallas; ajustes centralizados en `AudioSettings` (Singleton).
-- Herencia `Weapon` con `ElectricGuitar` y `Drumsticks` (Template Method), y creación de oleadas con `WaveBuilder` (Builder).
+## Edición académica — Eclipse y Oracle JDK 11
 
-## Dos distribuciones, un mismo código
+La rúbrica de Programación Avanzada exige **Oracle JDK 11 u Oracle JDK 8**, además de **Eclipse o NetBeans 21 o inferior**. Deadbeat está preparado para Java 11; no se garantiza compatibilidad con Java 8. Para acreditar el requisito literalmente, la validación final debe ejecutarse con **Oracle JDK 11**.
 
-| Edición | Herramientas para preparar | Entregable | Destinatario |
-|---|---|---|---|
-| Académica | **Oracle JDK 11**, Gradle 7.6.4 y Eclipse | Proyecto fuente, recursos, documentación e informe | Evaluación según rúbrica GM |
-| Portable Windows | JDK 17 en Windows y `jpackage` | `distribucion/Deadbeat-Windows-Portable.zip` | Jugadores sin Java instalado |
-
-Los módulos `core` y `lwjgl3` compilan con `options.release = 11`. La construcción de la edición portable se realiza en JDK 17 para incluir un runtime reducido dentro de `Deadbeat.exe`. **No hay dos versiones distintas del código Java.**
-
-## Abrir y ejecutar la edición académica
-
-1. Instalar **Oracle JDK 11** para la comprobación literal de la rúbrica. Eclipse es el IDE de entrega; en desarrollo también puede comprobarse con otra distribución de JDK 11.
-2. Situarse en `DeadBeat/`, establecer `JAVA_HOME` a la carpeta raíz del JDK 11 y ejecutar:
+1. Instalar Oracle JDK 11 y configurar `JAVA_HOME` para apuntar a la carpeta del JDK.
+2. En una consola de Windows abierta dentro de `DeadBeat/`, ejecutar:
 
    ```powershell
    .\gradlew.bat --version
    .\gradlew.bat clean :core:test :lwjgl3:classes --no-daemon
-   .\gradlew.bat :lwjgl3:run
+   .\gradlew.bat :lwjgl3:run --no-daemon
    ```
 
-3. Para preparar Eclipse, ejecutar `Preparar-Eclipse.bat` o `scripts/preparar-eclipse.ps1` conforme a [`docs/INSTALACION_ACADEMICA.md`](docs/INSTALACION_ACADEMICA.md).
-4. Importar los proyectos generados `Deadbeat`, `Deadbeat-core` y `Deadbeat-lwjgl3`, y utilizar `Deadbeat-Eclipse.launch` con el directorio de recursos definido.
+3. Para importar el proyecto a Eclipse, ejecutar `Preparar-Eclipse.bat` y seguir [`docs/INSTALACION_ACADEMICA.md`](docs/INSTALACION_ACADEMICA.md). El proyecto utiliza `Deadbeat-Eclipse.launch` para establecer el directorio de recursos.
 
-**Importante:** el workflow académico automatizado utiliza Temurin 11. La prueba final con Oracle JDK 11 debe efectuarse en el equipo del grupo.
+Los módulos `core` y `lwjgl3` utilizan `options.release = 11`. Gradle 7.6.4 admite JDK 11 y JDK 17.
 
-## Generar la edición portable
+## Edición portable para Windows
 
-En Windows, con **JDK 17** completo (incluido `jpackage`), ejecutar `Crear-portable-Windows.bat` dentro de `DeadBeat/`. También puede generarse desde **GitHub Actions → Deadbeat - Windows portable → Run workflow**. La carpeta comprimida incluye `Deadbeat.exe`, `runtime/` y `app/` y debe extraerse completa.
+La distribución portable se genera con **JDK 17** y `jpackage`. Incluye el ejecutable, la JVM y las bibliotecas necesarias, por lo que el equipo destinatario no necesita instalar Java.
 
-Ver [`docs/PORTABLE_WINDOWS.md`](docs/PORTABLE_WINDOWS.md), [`docs/FASE3_VALIDACION_PORTABLE.md`](docs/FASE3_VALIDACION_PORTABLE.md) y [`docs/FASE4_CI_DOBLE.md`](docs/FASE4_CI_DOBLE.md).
+- **Desde Windows:** ejecutar `Crear-portable-Windows.bat` con JDK 17 completo configurado.
+- **Desde GitHub:** abrir **Actions → Deadbeat - Windows portable → Run workflow**.
+- **Resultado:** `DeadBeat/distribucion/Deadbeat-Windows-Portable.zip`.
 
-## Controles
+El empaquetado no modifica las clases Java ni su compatibilidad con JDK 11. Leer [`docs/INSTALACION_PORTABLE.md`](docs/INSTALACION_PORTABLE.md) para instrucciones y verificaciones.
 
-| Acción | Control |
+## Controles del juego
+
+| Acción | Tecla / interacción |
 |---|---|
-| Caminar | WASD o flechas |
-| Pausa / reanudar | ESC |
-| Reiniciar | R |
-| Seleccionar una mejora | 1, 2, 3 o clic |
-| Pista musical anterior / siguiente | Q / E |
+| Moverse | WASD o flechas |
+| Pausar o reanudar | ESC |
+| Reiniciar partida | R |
+| Elegir una mejora | 1, 2, 3 o clic |
+| Pista anterior / siguiente | Q / E |
 | Recibir daño de prueba | H (depuración) |
-| Menú y resultados | Teclado o ratón según la pantalla |
+| Menú y pantallas finales | Teclado o ratón |
 
-## Documentación para la rúbrica
+## Informe y UML
 
-- **Informe actualizado (GM-1 a GM-10):** [`docs/REPORTE_EJECUTIVO_GM_ACTUALIZADO.pdf`](docs/REPORTE_EJECUTIVO_GM_ACTUALIZADO.pdf) y versiones [DOCX](docs/REPORTE_EJECUTIVO_GM_ACTUALIZADO.docx) / [Markdown](docs/REPORTE_EJECUTIVO_GM_ACTUALIZADO.md).
-- **Diagramas de clases y patrones:** `docs/figuras/` y fuentes editables `docs/uml_fuentes/`.
-- **Guía de la Fase 5:** [`docs/FASE5_DOCUMENTACION.md`](docs/FASE5_DOCUMENTACION.md).
-- **Anexos históricos conservados en la raíz del repositorio:** `Anexo_A_GM3_UML_Completo.pdf`, `Anexo_B_GM6_Singleton.pdf.pdf` y `REPORTE EJECUTIVO DE CUMPLIMIENTO.md`. Verificar concordancia antes de unirlos con el informe actual.
+- **Informe ejecutivo:** [`docs/Informe_Ejecutivo_Deadbeat.pdf`](docs/Informe_Ejecutivo_Deadbeat.pdf) y [`docs/Informe_Ejecutivo_Deadbeat.docx`](docs/Informe_Ejecutivo_Deadbeat.docx).
+- **Diagramas y maquetas:** `docs/figuras/` (PNG).
+- **Fuentes editables de UML:** `docs/uml_fuentes/` (DOT y PlantUML).
 
-## Historial técnico
+El informe documenta los requisitos GM-1 a GM-10, incluyendo los patrones **Singleton** (`AudioSettings`), **Strategy** (`MovementStrategy`), **Template Method** (`Weapon`) y **Builder** (`WaveBuilder`). Las imágenes de GM-1 son **maquetas**, no capturas de ejecución.
 
-Las mejoras del escenario de las versiones 0.4–0.5.3 se explican en `docs/WORLD_0_4.md`, `docs/WORLD_0_5.md`, `docs/WORLD_0_5_1_FIXES.md`, `docs/WORLD_0_5_2_TEXTURE_FIX.md` y `docs/PROPS_0_5_3.md`. Estos documentos describen iteraciones anteriores y no necesariamente el estado completo de la rama `main`.
+## Control de calidad
 
-## Aviso de distribución
+Los flujos de integración continua validan la compilación y las pruebas del código con JDK 11 y JDK 17:
 
-El repositorio incorpora música de terceros. Deben comprobarse los derechos de las pistas o sustituirlas por recursos autorizados antes de distribuir públicamente el juego portable.
+- [Académico JDK 11](https://github.com/Klonoh/Deadbeat/actions/workflows/deadbeat-academico-jdk11.yml)
+- [Windows portable](https://github.com/Klonoh/Deadbeat/actions/workflows/deadbeat-portable-windows.yml)
+
+Estas verificaciones automáticas no sustituyen la prueba manual con Oracle JDK 11 en Eclipse ni la apertura del ejecutable en otro equipo Windows.
+
+## Derechos de distribución
+
+El repositorio incorpora música de terceros. Antes de publicar o distribuir el videojuego fuera del contexto permitido, deben obtenerse los derechos de uso correspondientes o reemplazar las pistas por música autorizada. No se ha validado que exista autorización para redistribuir estas canciones.

@@ -1,6 +1,6 @@
 # DEADBEAT - Instalacion academica en Eclipse (Java 11)
 
-Esta guia corresponde a la edicion de evaluacion del proyecto GM de Programacion Avanzada.
+Esta guia permite abrir, compilar y ejecutar la edicion academica de Deadbeat en Eclipse.
 Se usa **el mismo codigo fuente** que genera la version portable de Windows.
 
 ## Requisitos academicos
@@ -96,7 +96,7 @@ El `:lwjgl3:run` ya define `workingDir = rootProject.file('assets')`.
 
 La rubrica solicita expresamente:
 
-- Instrucciones de instalacion y ejecucion (esta guia y la verificacion).
+- Instrucciones de instalacion y ejecucion (esta guia).
 - Codigo fuente y **export del proyecto Eclipse** con metadata `.project`, `.classpath`
   y `.settings` generada desde el repositorio completo.
 - Recursos necesarios: `assets/`, bibliotecas resueltas por el Wrapper y, si el
@@ -104,8 +104,9 @@ La rubrica solicita expresamente:
 - Reporte ejecutivo con GM-1 a GM-10, diagramas UML y evidencia en codigo.
 - Copia del Gradle Wrapper y los modulos `core` / `lwjgl3`.
 
-El ZIP academico **no** se genera en esta fase: corresponde a la fase final
-cuando el informe y la validacion esten terminados.
+El paquete academico se prepara de forma independiente de la distribucion portable.
+Debe incluir el proyecto exportado desde Eclipse, codigo fuente, recursos,
+dependencias y el informe ejecutivo.
 
 ## F. Solucion de problemas
 
